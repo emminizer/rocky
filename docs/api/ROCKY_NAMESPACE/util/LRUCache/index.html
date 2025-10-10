@@ -12,7 +12,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
     
     
       
@@ -20,7 +20,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.2a3383ac.min.css">
       
       
 
@@ -300,15 +300,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#members" class="md-nav__link">
-    <span class="md-ellipsis">
-      Members
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#functions" class="md-nav__link">
     <span class="md-ellipsis">
       Functions
@@ -355,6 +346,42 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      capacity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#size" class="md-nav__link">
+    <span class="md-ellipsis">
+      size
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hits" class="md-nav__link">
+    <span class="md-ellipsis">
+      hits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#misses" class="md-nav__link">
+    <span class="md-ellipsis">
+      misses
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#clear" class="md-nav__link">
     <span class="md-ellipsis">
       clear
@@ -385,37 +412,47 @@
 
 
 <h1 id="class-lrucache">class LRUCache</h1>
-<p><em>Defined at src/rocky/LRUCache.h#26</em></p>
+<p><em>Defined at src/rocky/Cache.h#117</em></p>
 <p>LRUCache is a thread-safe implementation of a Least Recently Used (LRU) cache. It stores key-value pairs and evicts the least recently used item when the cache reaches its capacity. The cache is protected by a mutex to ensure thread safety. Adapted from https://www.geeksforgeeks.org/lru-cache-implementation Optimized by Copilot</p>
-<h2 id="members">Members</h2>
-<p>public int hits</p>
-<p>public int gets</p>
 <h2 id="functions">Functions</h2>
 <h3 id="lrucache">LRUCache<K, V></h3>
-<p><em>public void LRUCache<K, V>(int capacity_)</em></p>
-<p><em>Defined at src/rocky/LRUCache.h#41</em></p>
+<p><em>public void LRUCache<K, V>(int capacity)</em></p>
+<p><em>Defined at src/rocky/Cache.h#131</em></p>
 <p>Constructs an LRUCache with the specified capacity.</p>
 <p><strong>capacity_</strong> The maximum number of items the cache can hold.</p>
 <h3 id="setcapacity">setCapacity</h3>
 <p><em>public void setCapacity(int value)</em></p>
-<p><em>Defined at src/rocky/LRUCache.h#48</em></p>
+<p><em>Defined at src/rocky/Cache.h#138</em></p>
 <p>Sets the cache capacity and clears all current entries and statistics.</p>
 <p><strong>value</strong> The new maximum number of items the cache can hold.</p>
 <h3 id="get">get</h3>
 <p><em>public int get(const K &amp; key)</em></p>
-<p><em>Defined at src/rocky/LRUCache.h#63</em></p>
+<p><em>Defined at src/rocky/Cache.h#153</em></p>
 <p>Retrieves the value associated with the given key, if present. Moves the accessed item to the most recently used position.</p>
 <p><strong>key</strong> The key to look up.</p>
 <p><strong>return</strong> An optional containing the value if found, or empty if not found.</p>
 <h3 id="put">put</h3>
 <p><em>public void put(const K &amp; key, const V &amp; value)</em></p>
-<p><em>Defined at src/rocky/LRUCache.h#83</em></p>
+<p><em>Defined at src/rocky/Cache.h#174</em></p>
 <p>Inserts or updates the value for the given key. If the key already exists, updates its value and moves it to the most recently used position. If the cache is full, evicts the least recently used item.</p>
 <p><strong>key</strong> The key to insert or update.</p>
 <p><strong>value</strong> The value to associate with the key.</p>
+<h3 id="capacity">capacity</h3>
+<p><em>public int capacity()</em></p>
+<p><em>Defined at src/rocky/Cache.h#197</em></p>
+<p>Returns the maximum number of items the cache can hold.</p>
+<h3 id="size">size</h3>
+<p><em>public int size()</em></p>
+<p><em>Defined at src/rocky/Cache.h#202</em></p>
+<h3 id="hits">hits</h3>
+<p><em>public int hits()</em></p>
+<p><em>Defined at src/rocky/Cache.h#208</em></p>
+<h3 id="misses">misses</h3>
+<p><em>public int misses()</em></p>
+<p><em>Defined at src/rocky/Cache.h#213</em></p>
 <h3 id="clear">clear</h3>
 <p><em>public void clear()</em></p>
-<p><em>Defined at src/rocky/LRUCache.h#106</em></p>
+<p><em>Defined at src/rocky/Cache.h#219</em></p>
 <p>Clears all entries from the cache and resets statistics.</p>
 
 
@@ -465,10 +502,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": [], "search": "../../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../../../..", "features": [], "search": "../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>

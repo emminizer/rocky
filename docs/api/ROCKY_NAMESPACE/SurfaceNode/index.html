@@ -12,7 +12,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
     
     
       
@@ -20,7 +20,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.2a3383ac.min.css">
       
       
 
@@ -309,15 +309,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#records" class="md-nav__link">
-    <span class="md-ellipsis">
-      Records
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#functions" class="md-nav__link">
     <span class="md-ellipsis">
       Functions
@@ -381,6 +372,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#traverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      traverse
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -414,12 +414,11 @@
 <p>protected int _elevationMatrix</p>
 <p>protected int _worldPoints</p>
 <p>protected _Bool _boundsDirty</p>
-<p>protected int _proxyMesh</p>
 <p>protected int _horizonCullingPoint</p>
 <p>protected _Bool _horizonCullingPoint_valid</p>
-<p>protected int _viewlocal</p>
-<h2 id="records">Records</h2>
-<p>ViewLocalData</p>
+<p>protected int _proxyGeom</p>
+<p>protected int _proxyVerts</p>
+<p>protected int * _horizon</p>
 <h2 id="functions">Functions</h2>
 <h3 id="surfacenode">SurfaceNode</h3>
 <p><em>public void SurfaceNode(const int &amp; tilekey, const int &amp; worldSRS)</em></p>
@@ -428,19 +427,22 @@
 <p>Update the elevation raster associated with this tile</p>
 <h3 id="getelevationraster">getElevationRaster</h3>
 <p><em>public int getElevationRaster()</em></p>
-<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#32</em></p>
+<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#30</em></p>
 <p>Elevation raster representing this surface</p>
 <h3 id="getelevationmatrix">getElevationMatrix</h3>
 <p><em>public const int &amp; getElevationMatrix()</em></p>
-<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#37</em></p>
+<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#35</em></p>
 <p>Elevation matrix representing to this surface</p>
 <h3 id="isvisible">isVisible</h3>
 <p><em>public _Bool isVisible(int &amp; rv)</em></p>
-<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#70</em></p>
+<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#80</em></p>
 <p>World-space visibility check (includes bounding box and horizon checks)</p>
 <h3 id="recomputebound">recomputeBound</h3>
 <p><em>public const int &amp; recomputeBound()</em></p>
 <p>Force a recompute of the bounding box and culling information</p>
+<h3 id="traverse">traverse</h3>
+<p><em>public void traverse(int &amp; v)</em></p>
+<p><em>Defined at src/rocky/vsg/terrain/SurfaceNode.h#51</em></p>
 
 
 
@@ -489,10 +491,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>
