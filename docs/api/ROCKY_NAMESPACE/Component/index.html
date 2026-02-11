@@ -410,7 +410,7 @@
 
 
 <h1 id="struct-component">struct Component</h1>
-<p><em>Defined at src/rocky/ecs/Component.h#16</em></p>
+<p><em>Defined at src/rocky/ecs/Component.h#15</em></p>
 <p>Base component type with built-in dirty tracking. NOTE: Yes, we need the CRTP here so that the "Dirty" object is unique for each derived type!</p>
 <h2 id="members">Members</h2>
 <p>public int owner</p>
@@ -419,13 +419,16 @@
 <h2 id="functions">Functions</h2>
 <h3 id="dirty">dirty</h3>
 <p><em>public void dirty(int &amp; r)</em></p>
-<p><em>Defined at src/rocky/ecs/Component.h#29</em></p>
+<p><em>Defined at src/rocky/ecs/Component.h#31</em></p>
+<p>Add this component to a global "dirty" collection. A system is responsible for installing the Dirty singleton by calling registry.emplace<MyComponent:Dirty>(registry.create());</p>
 <h3 id="dirty_1">dirty</h3>
 <p><em>public void dirty(int &amp; r, int e)</em></p>
-<p><em>Defined at src/rocky/ecs/Component.h#42</em></p>
+<p><em>Defined at src/rocky/ecs/Component.h#47</em></p>
+<p>Add this component to a global "dirty" collection. A system is responsible for installing the Dirty singleton by calling registry.emplace<MyComponent:Dirty>(registry.create());</p>
 <h3 id="eachdirty">eachDirty</h3>
 <p><em>public void eachDirty(int &amp; r, CALLABLE &amp;&amp; func)</em></p>
-<p><em>Defined at src/rocky/ecs/Component.h#49</em></p>
+<p><em>Defined at src/rocky/ecs/Component.h#55</em></p>
+<p>Iterate over all dirty components of this type, invoking the given callable</p>
 
 
 
