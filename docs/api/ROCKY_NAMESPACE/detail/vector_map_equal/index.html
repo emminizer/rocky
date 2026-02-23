@@ -15,11 +15,11 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
     
     
       
-        <title>class ResidentCache - Rocky</title>
+        <title>struct vector_map_equal - Rocky</title>
       
     
     
@@ -60,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#class-residentcache" class="md-skip">
+        <a href="#struct-vector_map_equal" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              class ResidentCache
+              struct vector_map_equal
             
           </span>
         </div>
@@ -321,17 +321,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#members" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Members
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -344,65 +333,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#get" class="md-nav__link">
+  <a href="#operator" class="md-nav__link">
     <span class="md-ellipsis">
       
-        get
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#put" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        put
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#capacity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        capacity
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#size" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        size
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hits
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#misses" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        misses
+        operator()
       
     </span>
   </a>
@@ -431,34 +365,12 @@
 
 
 
-<h1 id="class-residentcache">class ResidentCache</h1>
-<p><em>Defined at src/rocky/Cache.h#44</em></p>
-<p>ResidentCache cached std::weak_ptr's to shared objects. If the shared object is resideny anywhere in memory, the ResidentCache will be able to return it. K = KEY. Any object that can be hashed for an unordered_map. V = VALUE. Any object that is stored in a shared_ptr.</p>
-<h2 id="members">Members</h2>
-<p>public int _lut</p>
-<p>public int _mutex</p>
-<p>public int _hits</p>
-<p>public int _misses</p>
-<p>public int _puts</p>
+<h1 id="struct-vector_map_equal">struct vector_map_equal</h1>
+<p><em>Defined at src/rocky/Utils.h#105</em></p>
 <h2 id="functions">Functions</h2>
-<h3 id="get">get</h3>
-<p><em>public int get(const K &amp; key)</em></p>
-<p><em>Defined at src/rocky/Cache.h#56</em></p>
-<h3 id="put">put</h3>
-<p><em>public void put(const K &amp; key, const int &amp; value, const METADATA &amp; m)</em></p>
-<p><em>Defined at src/rocky/Cache.h#73</em></p>
-<h3 id="capacity">capacity</h3>
-<p><em>public int capacity()</em></p>
-<p><em>Defined at src/rocky/Cache.h#91</em></p>
-<h3 id="size">size</h3>
-<p><em>public int size()</em></p>
-<p><em>Defined at src/rocky/Cache.h#96</em></p>
-<h3 id="hits">hits</h3>
-<p><em>public int hits()</em></p>
-<p><em>Defined at src/rocky/Cache.h#102</em></p>
-<h3 id="misses">misses</h3>
-<p><em>public int misses()</em></p>
-<p><em>Defined at src/rocky/Cache.h#107</em></p>
+<h3 id="operator">operator()</h3>
+<p><em>public _Bool operator()(const T &amp; a, const T &amp; b)</em></p>
+<p><em>Defined at src/rocky/Utils.h#106</em></p>
 
 
 
