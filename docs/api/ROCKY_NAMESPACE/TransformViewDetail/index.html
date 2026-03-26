@@ -15,7 +15,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -331,6 +331,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Records
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -349,16 +360,20 @@
 
 
 <h1 id="struct-transformviewdetail">struct TransformViewDetail</h1>
-<p><em>Defined at src/rocky/vsg/ecs/TransformDetail.h#17</em></p>
+<p><em>Defined at src/rocky/vsg/ecs/TransformDetail.h#18</em></p>
 <p>Internal data calculated from a Transform instance in the context of a specific camera.</p>
 <h2 id="members">Members</h2>
 <p>public int revision</p>
 <p>public int model</p>
+<p>public int baseModel</p>
 <p>public int proj</p>
 <p>public int modelview</p>
 <p>public int mvp</p>
 <p>public int viewport</p>
 <p>public _Bool passingCull</p>
+<p>public Cached cache</p>
+<h2 id="records">Records</h2>
+<p>Cached</p>
 
 
 
