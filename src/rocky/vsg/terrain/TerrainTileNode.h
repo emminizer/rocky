@@ -14,7 +14,7 @@
 namespace ROCKY_NAMESPACE
 {
     class CreateTileManifest;
-    class TerrainEngine;
+    class TerrainTileFactory;
     class TerrainSettings;
     class TerrainTileHost;
 
@@ -75,7 +75,7 @@ namespace ROCKY_NAMESPACE
                 static_cast<vsg::QuadGroup*>(children[1].get())->children[i].get());
         }
 
-        friend class TerrainEngine;
+        friend class TerrainTileFactory;
         friend class TerrainTilePager;
     };
 }

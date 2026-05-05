@@ -18,7 +18,7 @@ namespace ROCKY_NAMESPACE
 {
     class IOOptions;
     class Map;
-    class TerrainEngine;
+    class TerrainTileFactory;
     class GeoPoint;
     class TerrainNode;
 
@@ -46,8 +46,8 @@ namespace ROCKY_NAMESPACE
         bool update(VSGContext context);
 
         //! Access to the engine for stats
-        const TerrainEngine& engine() const {
-            return *_engine.get();
+        const TerrainTileFactory& tileFactory() const {
+            return *_tileFactory.get();
         }
 
     public: //! TerrainTileHost interface
@@ -65,7 +65,7 @@ namespace ROCKY_NAMESPACE
         //! Tracks and updates state for terrain tiles
         TerrainTilePager _tiles;
 
-        std::shared_ptr<TerrainEngine> _engine;
+        std::shared_ptr<TerrainTileFactory> _tileFactory;
 
         Result<> createRootTiles(VSGContext);
     };
@@ -111,7 +111,7 @@ namespace ROCKY_NAMESPACE
         SRS renderingSRS;
 
         //! Creates Vulkan state for rendering terrain tiles.
-        std::shared_ptr<TerrainState> terrainState;
+        std::shared_ptr<TerrainState> state;
 
         //! Reflects any startup errors that occur
         Status status;

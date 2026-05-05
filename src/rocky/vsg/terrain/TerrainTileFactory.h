@@ -19,19 +19,19 @@ namespace ROCKY_NAMESPACE
      * Access to all terrain-specific logic, data, and settings
      * associated with a Map.
      */
-    class TerrainEngine
+    class TerrainTileFactory
     {
     public:
-        TerrainEngine(
+        TerrainTileFactory(
             std::shared_ptr<const Map> map,
             const Profile& profile,
             const SRS& renderingSRS,
-            std::shared_ptr<TerrainState> stateFactory,
+            std::shared_ptr<TerrainState> state,
             VSGContext context,
             const TerrainSettings& settings,
             TerrainTileHost* host);
 
-        ~TerrainEngine();
+        ~TerrainTileFactory();
 
         //! Terrain settings.
         const TerrainSettings& settings;
@@ -48,8 +48,8 @@ namespace ROCKY_NAMESPACE
         //! Builds geometry for terrain tiles
         GeometryPool geometryPool;
 
-        //! Creates the state group objects for terrain rendering
-        std::shared_ptr<TerrainState> stateFactory;
+        //! Holds the state group objects for terrain rendering
+        std::shared_ptr<TerrainState> state;
 
         TerrainTileHost* host = nullptr;
 

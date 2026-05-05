@@ -26,7 +26,7 @@ using namespace ROCKY_NAMESPACE;
 #include "Demo_LineFeatures.h"
 #include "Demo_PolygonFeatures.h"
 #include "Demo_LabelFeatures.h"
-#include "Demo_MapManipulator.h"
+#include "Demo_Camera.h"
 #include "Demo_Serialization.h"
 #include "Demo_Environment.h"
 #include "Demo_Views.h"
@@ -117,7 +117,7 @@ std::vector<Demo> demos =
     Demo{ "Decluttering", Demo_Decluttering },
     Demo{ "Elevation query", Demo_ElevationSampler },
     Demo{ "Intersection", Demo_Intersect },
-    Demo{ "Camera", Demo_MapManipulator },
+    Demo{ "Camera", Demo_Camera },
     Demo{ "Views", Demo_Views },
     Demo{ "Terrain", Demo_Terrain },
     Demo{ "Sandbox", {},

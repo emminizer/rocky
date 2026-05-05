@@ -12,7 +12,7 @@
 #include "helpers.h"
 using namespace ROCKY_NAMESPACE;
 
-auto Demo_MapManipulator = [](Application& app)
+auto Demo_Camera = [](Application& app)
 {
     static bool spin = false;
     static float spinSpeed = 1.0f;
@@ -54,9 +54,23 @@ auto Demo_MapManipulator = [](Application& app)
                 ImGuiLTable::Text("Pitch:", "%.1lf", (double)vp.pitch->value());
                 ImGuiLTable::Text("Range:", "%.1lf", (double)vp.range->value());
 
+                auto camera = first_view.vsgView->camera;
+                bool ortho = is_orthographic_projection_matrix(camera->projectionMatrix->transform());
+                if (ImGuiLTable::Checkbox("Orthographic", &ortho))
+                {
+                    if (ortho) {
+                        camera->projectionMatrix = vsg::Orthographic::create(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+                    }
+                    else {
+                        double ar = (double)camera->getViewport().width / (double)camera->getViewport().height;
+                        camera->projectionMatrix = vsg::Perspective::create(45.0, ar, 1.0, 1000.0);
+                    }
+                }
+
                 ImGuiLTable::Checkbox("Lock azimuth", &manip->settings.lockAzimuthWhilePanning);
                 ImGuiLTable::Checkbox("Zoom to mouse", &manip->settings.zoomToMouse);
 
+                // Region of Interest zone aroudn teh focal point improves shadow quality:
                 static bool useROI = false;
                 roi->points.clear();
                 ImGuiLTable::Checkbox("Attach ROI", &useROI);

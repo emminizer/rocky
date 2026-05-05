@@ -116,17 +116,13 @@ auto Demo_Views = [](Application& app)
                         bool ortho = is_orthographic_projection_matrix(camera->projectionMatrix->transform());
                         if (ImGuiLTable::Checkbox("Orthographic", &ortho))
                         {
-                            if (ortho)
-                            {
+                            if (ortho) {
                                 camera->projectionMatrix = vsg::Orthographic::create(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
                             }
-                            else
-                            {
+                            else {
                                 double ar = (double)camera->getViewport().width / (double)camera->getViewport().height;
                                 camera->projectionMatrix = vsg::Perspective::create(45.0, ar, 1.0, 1000.0);
                             }
-                            if (auto manip = MapManipulator::get(view.vsgView))
-                                manip->home();
                         }
                     }
 

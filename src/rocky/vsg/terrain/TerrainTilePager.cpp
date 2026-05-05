@@ -4,7 +4,7 @@
  * MIT License
  */
 #include "TerrainTilePager.h"
-#include "TerrainEngine.h"
+#include "TerrainTileFactory.h"
 #include "TerrainSettings.h"
 #include "TerrainTileNode.h"
 #include "TerrainTileHost.h"
@@ -115,7 +115,7 @@ TerrainTilePager::ping(TerrainTileNode* tile, const TerrainTileNode* parent, vsg
 }
 
 bool
-TerrainTilePager::update(std::shared_ptr<TerrainEngine> engine, VSGContext vsgcontext)
+TerrainTilePager::update(std::shared_ptr<TerrainTileFactory> tileFactory, VSGContext vsgcontext)
 {
     std::scoped_lock lock(_mutex);
 
@@ -155,7 +155,7 @@ TerrainTilePager::update(std::shared_ptr<TerrainEngine> engine, VSGContext vsgco
         auto iter = _tiles.find(key);
         if (iter != _tiles.end())
         {
-            requestCreateChildren(iter->second, engine, vsgcontext); // parent, context
+            requestCreateChildren(iter->second, tileFactory, vsgcontext); // parent, context
             iter->second.tile->needsSubtiles = false;
         }
 
@@ -169,7 +169,7 @@ TerrainTilePager::update(std::shared_ptr<TerrainEngine> engine, VSGContext vsgco
         auto iter = _tiles.find(key);
         if (iter != _tiles.end())
         {
-            requestLoadData(iter->second, io, engine, vsgcontext);
+            requestLoadData(iter->second, io, tileFactory, vsgcontext);
         }
 
         changes = true;
@@ -182,7 +182,7 @@ TerrainTilePager::update(std::shared_ptr<TerrainEngine> engine, VSGContext vsgco
         auto iter = _tiles.find(key);
         if (iter != _tiles.end())
         {
-            requestMergeData(iter->second, io, engine, vsgcontext);
+            requestMergeData(iter->second, io, tileFactory, vsgcontext);
         }
 
         changes = true;
@@ -242,9 +242,9 @@ TerrainTilePager::getTile(const TileKey& key) const
 }
 
 void
-TerrainTilePager::requestCreateChildren(TileInfo& info, std::shared_ptr<TerrainEngine> engine, VSGContext vsgcontext) const
+TerrainTilePager::requestCreateChildren(TileInfo& info, std::shared_ptr<TerrainTileFactory> tileFactory, VSGContext vsgcontext) const
 {
-    ROCKY_SOFT_ASSERT_AND_RETURN(info.tile && engine, void());
+    ROCKY_SOFT_ASSERT_AND_RETURN(info.tile && tileFactory, void());
 
     // make sure we're not already working on it
     if (!info.childrenCreator.empty())
@@ -252,16 +252,16 @@ TerrainTilePager::requestCreateChildren(TileInfo& info, std::shared_ptr<TerrainE
 
     RP_DEBUG("requestLoadSubtiles -> {}", info.tile->key.str());
 
-    std::weak_ptr<TerrainEngine> weak_engine(engine);
+    std::weak_ptr<TerrainTileFactory> weak_tileFactory(tileFactory);
     vsg::observer_ptr<TerrainTileNode> weak_parent(info.tile);
 
     // function that will create all 4 children and compile them
-    auto create_children = [weak_engine, weak_parent, vsgcontext](Cancelable& p) -> vsg::ref_ptr<vsg::Node>
+    auto create_children = [weak_tileFactory, weak_parent, vsgcontext](Cancelable& p) -> vsg::ref_ptr<vsg::Node>
     {
         vsg::ref_ptr<vsg::Node> result;
 
-        auto engine = weak_engine.lock();
-        if (!engine) return result;
+        auto tileFactory = weak_tileFactory.lock();
+        if (!tileFactory) return result;
 
         auto parent = weak_parent.ref_ptr();
         if (!parent) return result;
@@ -275,7 +275,7 @@ TerrainTilePager::requestCreateChildren(TileInfo& info, std::shared_ptr<TerrainE
 
             TileKey childkey = parent->key.createChildKey(quadrant);
 
-            auto tile = engine->createTile(childkey, parent, vsgcontext);
+            auto tile = tileFactory->createTile(childkey, parent, vsgcontext);
 
             ROCKY_SOFT_ASSERT_AND_RETURN(tile != nullptr, result);
 
@@ -317,15 +317,15 @@ TerrainTilePager::requestCreateChildren(TileInfo& info, std::shared_ptr<TerrainE
         create_children,
         jobs::context {
             "create child " + info.tile->key.str(),
-            jobs.get_pool(engine->loadSchedulerName),
+            jobs.get_pool(tileFactory->loadSchedulerName),
             priority_func,
             nullptr
         });
 }
 
 void
-TerrainTilePager::requestLoadData(TileInfo& info, const IOOptions& in_io, std::shared_ptr<TerrainEngine> engine,
-    VSGContext vsgcontext) const
+TerrainTilePager::requestLoadData(TileInfo& info, const IOOptions& in_io,
+    std::shared_ptr<TerrainTileFactory> tileFactory, VSGContext vsgcontext) const
 {
     ROCKY_SOFT_ASSERT_AND_RETURN(info.tile, void());
 
@@ -342,7 +342,7 @@ TerrainTilePager::requestLoadData(TileInfo& info, const IOOptions& in_io, std::s
 
     const IOOptions io(in_io);
 
-    auto load = [key, tile, engine, io, vsgcontext](Cancelable& p) -> bool
+    auto load = [key, tile, tileFactory, io, vsgcontext](Cancelable& p) -> bool
     {
         if (p.canceled())
             return false;
@@ -350,11 +350,11 @@ TerrainTilePager::requestLoadData(TileInfo& info, const IOOptions& in_io, std::s
         TerrainTileModelFactory factory;
         factory.compositeColorLayers = true;
 
-        auto dataModel = factory.createTileModel(engine->map.get(), key, io.with(p));
+        auto dataModel = factory.createTileModel(tileFactory->map.get(), key, io.with(p));
 
         if (!dataModel.empty())
         {
-            auto newRenderModel = engine->stateFactory->updateRenderModel(tile->key, tile->renderModel, dataModel, vsgcontext);
+            auto newRenderModel = tileFactory->state->updateRenderModel(tile->key, tile->renderModel, dataModel, vsgcontext);
 
             tile->renderModel = newRenderModel;
 
@@ -381,15 +381,15 @@ TerrainTilePager::requestLoadData(TileInfo& info, const IOOptions& in_io, std::s
         load, 
         jobs::context {
             "load data " + key.str(),
-            jobs.get_pool(engine->loadSchedulerName),
+            jobs.get_pool(tileFactory->loadSchedulerName),
             priority_func,
             nullptr
         } );
 }
 
 void
-TerrainTilePager::requestMergeData(TileInfo& info, const IOOptions& in_io, std::shared_ptr<TerrainEngine> engine,
-    VSGContext vsgcontext) const
+TerrainTilePager::requestMergeData(TileInfo& info, const IOOptions& in_io,
+    std::shared_ptr<TerrainTileFactory> tileFactory, VSGContext vsgcontext) const
 {
     ROCKY_SOFT_ASSERT_AND_RETURN(info.tile, void());
 
@@ -409,14 +409,14 @@ TerrainTilePager::requestMergeData(TileInfo& info, const IOOptions& in_io, std::
     }
 
     // operation to dispose of the old state command and replace it with a new one:
-    std::weak_ptr<TerrainEngine> weak_engine(engine);
+    std::weak_ptr<TerrainTileFactory> weak_tileFactory(tileFactory);
 
-    auto merge = [key, weak_engine, vsgcontext](Cancelable& c) -> bool
+    auto merge = [key, weak_tileFactory, vsgcontext](Cancelable& c) -> bool
     {
-        auto engine = weak_engine.lock();
-        if (!engine) return false;
+        auto tileFactory = weak_tileFactory.lock();
+        if (!tileFactory) return false;
 
-        auto tile = engine->host->tiles().getTile(key);
+        auto tile = tileFactory->host->tiles().getTile(key);
         if (tile)
         {
             for (auto c : tile->stategroup->stateCommands)

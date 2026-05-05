@@ -5,7 +5,7 @@
  */
 #include "TerrainNode.h"
 #include "TerrainTileNode.h"
-#include "TerrainEngine.h"
+#include "TerrainTileFactory.h"
 #include "../VSGUtils.h"
 
 #include <rocky/IOTypes.h>
@@ -42,11 +42,11 @@ TerrainProfileNode::reset(VSGContext vsgcontext)
     _tiles.releaseAll();
 
     // create a new engine to render this map
-    _engine = std::make_shared<TerrainEngine>(
+    _tileFactory = std::make_shared<TerrainTileFactory>(
         terrain.map,
         profile,
         terrain.renderingSRS,
-        terrain.terrainState,
+        terrain.state,
         vsgcontext,
         settings(),
         this);      // host
@@ -55,17 +55,17 @@ TerrainProfileNode::reset(VSGContext vsgcontext)
 Result<>
 TerrainProfileNode::createRootTiles(VSGContext vsgcontext)
 {
-    ROCKY_SOFT_ASSERT_AND_RETURN(_engine != nullptr, Failure_AssertionFailure);
-    ROCKY_SOFT_ASSERT_AND_RETURN(_engine->stateFactory->status.ok(), _engine->stateFactory->status.error());
+    ROCKY_SOFT_ASSERT_AND_RETURN(_tileFactory != nullptr, Failure_AssertionFailure);
+    ROCKY_SOFT_ASSERT_AND_RETURN(_tileFactory->state->status.ok(), _tileFactory->state->status.error());
     ROCKY_HARD_ASSERT(children.empty(), "TerrainNode::createRootTiles() called with children already present");
 
     // once the pipeline exists, we can start creating tiles.
-    auto keys = _engine->profile.allKeysAtLOD(terrain.minLevel);
+    auto keys = _tileFactory->profile.allKeysAtLOD(terrain.minLevel);
 
     for (auto& key : keys)
     {
         // create a tile with no parent:
-        auto tile = _engine->createTile(key, {}, vsgcontext);
+        auto tile = _tileFactory->createTile(key, {}, vsgcontext);
 
         // ensure it can't page out:
         tile->doNotExpire = true;
@@ -98,12 +98,12 @@ TerrainProfileNode::update(VSGContext vsgcontext)
         }
         else
         {
-            ROCKY_HARD_ASSERT(_engine);
+            ROCKY_HARD_ASSERT(_tileFactory);
 
-            if (_tiles.update(_engine, vsgcontext))
+            if (_tiles.update(_tileFactory, vsgcontext))
                 changes = true;
 
-            changes = _engine->update(vsgcontext);
+            changes = _tileFactory->update(vsgcontext);
         }
     }
 
@@ -123,9 +123,9 @@ TerrainNode::TerrainNode(VSGContext vsgcontext) :
     Inherit()
 {
     // create the graphics pipeline to render this map
-    terrainState = std::make_shared<TerrainState>(vsgcontext);
+    state = std::make_shared<TerrainState>(vsgcontext);
 
-    _profileNodes = terrainState->createTerrainStateGroup(vsgcontext);
+    _profileNodes = state->createTerrainStateGroup(vsgcontext);
 
     if (!_profileNodes)
     {
@@ -155,7 +155,7 @@ TerrainNode::stats() const
         if (auto profileNode = child.cast<TerrainProfileNode>())
         {
             result.numResidentTiles += profileNode->tiles().size();
-            result.geometryPoolSize += profileNode->engine().geometryPool.size();
+            result.geometryPoolSize += profileNode->tileFactory().geometryPool.size();
         }
     }
     return result;
@@ -248,7 +248,7 @@ TerrainNode::reset(VSGContext context)
     }
 
     // update the state data with the (possibly new) profile:
-    terrainState->updateProfile(profile);
+    state->updateProfile(profile);
 }
 
 Result<>
@@ -282,7 +282,7 @@ TerrainNode::update(VSGContext context)
     // check for settings changes
     this->children[0].mask = castShadows ? vsg::MASK_ALL : (vsg::MASK_ALL & ~0x01);    
 
-    terrainState->updateSettings(*this);
+    state->updateSettings(*this);
 
     return changes;
 }
