@@ -1,1 +1,4 @@
 build/
+vcpkg/
+install/
+imgui.ini
