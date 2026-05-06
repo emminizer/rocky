@@ -13,7 +13,7 @@
         { "name" : "imgui", "features" : [ "vulkan-binding" ] },
         { "name" : "nlohmann-json" },
         { "name" : "openssl" },
-        { "name" : "proj" },
+        { "name" : "proj", "features": [ "tools" ]},
         { "name" : "qtbase", "default-features" : false, "features" : ["widgets", "vulkan"] },
         { "name" : "spdlog" },
         { "name" : "sqlite3" },
