@@ -145,10 +145,10 @@ namespace
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
         // View-dependent data (lights) - needed in fragment shader for sun direction
-        PipelineUtils::addViewDependentData(shaderSet, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        PipelineUtils::addViewDependentState(shaderSet);
 
         // Push constants available in both vertex and fragment stages
-        shaderSet->addPushConstantRange("pc", "", VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 128);
+        shaderSet->addPushConstantRange("pc", "", VK_SHADER_STAGE_ALL, 0, 128);
 
         return shaderSet;
     }
@@ -172,7 +172,7 @@ namespace
 
         // Enable atmosphere UBO and view-dependent data
         pipelineConfig->enableDescriptor("atmo");
-        PipelineUtils::enableViewDependentData(pipelineConfig);
+        PipelineUtils::enableViewDependentState(pipelineConfig);
 
         struct SetPipelineStates : public vsg::Visitor
         {

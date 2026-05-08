@@ -50,16 +50,9 @@ out gl_PerVertex {
     vec4 gl_Position;
 };
 
-// Moves the vertex closer to the camera by the specified bias,
-// clamping it beyond the near clip plane if necessary.
-vec3 apply_depth_offset(in vec3 vertex, float offset, float n)
-{
-    float t_n = (-n + 1.0) / -vertex.z; // [0..1] -> [n+1 .. vertex]
-    if (t_n <= 0.0) return vertex; // already behind near plane
-    float len = length(vertex);
-    float t_offset = 1.0 - (offset/len);
-    return vertex * max(t_n, t_offset);
-}
+#pragma include "rocky.viewdependentstate.glsl"
+#pragma include "rocky.projection.glsl"
+#pragma include "rocky.depthoffset.glsl"
 
 void main()
 {
@@ -93,20 +86,19 @@ void main()
 
     float bias = line.style.depthOffset;
 
-    float nearz = pc.projection[3][3] == 0 ?
-        -pc.projection[3][2] / (pc.projection[2][2] + 1.0) : // perspective
-        -1.0; //-(pc.projection[3][2] + 1.0) / pc.projection[2][2];  // orthographic
-
     vec4 curr_view = pc.modelview * vec4(in_vertex, 1);
-    curr_view.xyz  = apply_depth_offset(curr_view.xyz, bias, nearz);
+    curr_view      = apply_projection(curr_view);
+    curr_view      = apply_depth_offset(curr_view, bias);
     vec4 curr_clip = pc.projection * curr_view;
 
     vec4 prev_view = pc.modelview * vec4(in_vertex_prev, 1);
-    prev_view.xyz  = apply_depth_offset(prev_view.xyz, bias, nearz);
+    prev_view      = apply_projection(prev_view);
+    prev_view      = apply_depth_offset(prev_view, bias);
     vec4 prev_clip = pc.projection * prev_view;
 
     vec4 next_view = pc.modelview * vec4(in_vertex_next, 1);
-    next_view.xyz  = apply_depth_offset(next_view.xyz, bias, nearz);
+    next_view      = apply_projection(next_view);
+    next_view      = apply_depth_offset(next_view, bias);
     vec4 next_clip = pc.projection * next_view;
 
     vec2 curr_pixel = (curr_clip.xy / curr_clip.w) * viewport_size;

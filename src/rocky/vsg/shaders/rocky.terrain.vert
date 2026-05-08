@@ -6,7 +6,21 @@ layout(push_constant) uniform PushConstants {
     mat4 modelview;
 } pc;
 
+// input vertex attributes
+layout(location = 0) in vec3 in_vertex_ts;
+layout(location = 1) in vec3 in_up_ts;
+layout(location = 2) in vec3 in_uvw;
+
 layout(set = 0, binding = 10) uniform sampler2D elevationTex;
+
+// uniforms (TerrainState.h)
+layout(set = 0, binding = 9) uniform TerrainSettings {
+    vec4 backgroundColor;
+    float atmosphere;
+    float lighting;
+    float debugTriangles;
+    float debugNormals;
+} terrain;
 
 // rocky::TerrainTileDescriptors
 layout(set = 0, binding = 13) uniform TileData {
@@ -19,18 +33,13 @@ layout(set = 0, binding = 13) uniform TileData {
     float padding[1];
 } tile;
 
-// input vertex attributes
-layout(location = 0) in vec3 in_vertex_ts;
-layout(location = 1) in vec3 in_up_ts;
-layout(location = 2) in vec3 in_uvw;
-
 // inter-stage interface block
 layout(location = 0) out Varyings {
     vec2 uv;
     vec3 normal_vs;
     vec3 vertex_vs;
-    vec3 viewdir_ecef;
-    vec3 camera_ecef;
+    vec3 look_ws;
+    vec3 camera_ws;
     vec3 sundir_ecef;
     float discardVert;
 } vary;
@@ -40,6 +49,7 @@ out gl_PerVertex {
     vec4 gl_Position;
 };
 
+
 // in_uvw.w marker bits:
 #define VERTEX_VISIBLE       1 // draw it
 #define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
@@ -47,8 +57,10 @@ out gl_PerVertex {
 #define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
 #define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
 
-// for: get_sunlight_direction()
-#include "rocky.lighting.glsl"
+
+#pragma include "rocky.viewdependentstate.glsl"
+#pragma include "rocky.lighting.glsl"
+#pragma include "rocky.projection.glsl"
 
 
 // sample the elevation data at a UV tile coordinate and make a tangent-space position
@@ -118,24 +130,26 @@ void main()
     mat3 normalMatrix = mat3(transpose(inverse(pc.modelview)));
 
     vary.uv = (tile.colorMatrix * vec4(in_uvw.st, 0, 1)).st;
-    vary.vertex_vs = position_vs.xyz / position_vs.w;
     vary.normal_vs = normalize(normalMatrix * compute_tbn_ts(in_up_ts) * compute_normal_ts(in_uvw.st));
-    // Rotation from view space to ECEF
-    mat3 view_to_ecef = mat3(tile.modelMatrix) * transpose(mat3(pc.modelview));
 
-    // View direction in ECEF, computed from view space to avoid catastrophic cancellation
-    vary.viewdir_ecef = view_to_ecef * normalize(vary.vertex_vs);
-
-    // Camera ECEF position
-    vec3 cam_ts = -transpose(mat3(pc.modelview)) * pc.modelview[3].xyz;
-    vary.camera_ecef = (tile.modelMatrix * vec4(cam_ts, 1.0)).xyz;
+    // Rotation from view space to world space
+    mat3 rotate_vs_to_ws = get_rotate_vs_to_ws();
 
     // Sun direction in ECEF
-    vary.sundir_ecef = view_to_ecef * (-get_sunlight_direction());
+    vary.sundir_ecef = rotate_vs_to_ws * (-get_sunlight_direction());
 
-    // in an ortho projection, dicard SKIRT verts.
-    vary.discardVert =
-        pc.projection[3][3] > 0.0 && (int(in_uvw.z) & VERTEX_SKIRT) != 0 ? 1.0 : 0.0;
+    // in an ortho projection, discard SKIRT verts.
+    vary.discardVert = pc.projection[3][3] > 0.0 && (int(in_uvw.z) & VERTEX_SKIRT) != 0 ? 1.0 : 0.0;
+
+    // apply an optional screen projection
+    position_vs = apply_projection(position_vs);
+
+    vary.vertex_vs = position_vs.xyz / position_vs.w;
+
+    // For lighting:
+    vec3 camera_ts = -transpose(mat3(pc.modelview)) * pc.modelview[3].xyz;
+    vary.camera_ws = (vds.inverseViewMatrix * pc.modelview * vec4(camera_ts, 1.0)).xyz;
+    vary.look_ws = rotate_vs_to_ws * normalize(vary.vertex_vs);
 
     gl_Position = pc.projection * position_vs;
 }

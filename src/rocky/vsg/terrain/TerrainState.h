@@ -1,6 +1,6 @@
 /**
  * rocky c++
- * Copyright 2025 Pelican Mapping
+ * Copyright 2026 Pelican Mapping
  * MIT License
  */
 #pragma once
@@ -21,12 +21,10 @@ namespace ROCKY_NAMESPACE
         struct Uniforms
         {
             glm::fvec4 backgroundColor = Color("#08AEE0");
-            glm::fvec2 ellipsoidAxes = { 0.0f, 0.0f };
             float applyAtmosphere = 1.0f;
             float applyLighting = 0.0f;
             float debugTriangles = 0.0f;
             float debugNormals = 0.0f;
-            float padding[2];
         };
         static_assert(sizeof(Uniforms) % 16 == 0, "TerrainDescriptors::Uniforms must be a multiple of 16 bytes in size");
 
@@ -100,6 +98,9 @@ namespace ROCKY_NAMESPACE
 
         //! Configures an existing stategroup for rendering terrain
         vsg::ref_ptr<vsg::StateGroup> createTerrainStateGroup(VSGContext context);
+
+        //! Add an external descriptor that should be bound to the pipeline.
+        void add(vsg::ref_ptr<vsg::Descriptor>);
 
         //! Integrates data from the new data model into an existing render model,
         //! and creates or updates all the necessary descriptors and commands.
@@ -177,6 +178,9 @@ namespace ROCKY_NAMESPACE
 
         // terrain-wide settings, etc.
         TerrainDescriptors _terrainDescriptors;
+
+        // descriptors added via add() method
+        vsg::Descriptors _additionalDescriptors;
 
         // for wireframe mode
         vsg::ref_ptr<vsg::SetPrimitiveTopology> _wireframe;

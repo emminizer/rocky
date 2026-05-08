@@ -5,6 +5,7 @@
  */
 #include "DisplayManager.h"
 #include "MapManipulator.h"
+#include "PipelineState.h"
 
 #include <vsg/vk/Instance.h>
 
@@ -114,6 +115,9 @@ Window::addView(vsg::ref_ptr<vsg::View> vsgView)
 
     auto& vsgcontext = _display->vsgcontext;
     ROCKY_SOFT_ASSERT_AND_RETURN(vsgcontext, s_nullView);
+
+    // install the custom VDS:
+    vsgView->viewDependentState = RockyViewDependentState::create(vsgView);
 
     // rendergraph to control the view within a window:
     auto renderGraph = vsg::RenderGraph::create(vsgWindow, vsgView);

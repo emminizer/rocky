@@ -124,6 +124,17 @@ auto Demo_Views = [](Application& app)
                                 camera->projectionMatrix = vsg::Perspective::create(45.0, ar, 1.0, 1000.0);
                             }
                         }
+
+                        if (ortho)
+                        {
+                            if (auto vds = dynamic_cast<RockyViewDependentState*>(view.vsgView->viewDependentState.get()))
+                            {
+                                if (ImGuiLTable::Checkbox("Stereographic", &vds->uniforms().stereographic))
+                                {
+                                    vds->dirty();
+                                }
+                            }
+                        }
                     }
 
                     ImGuiLTable::SliderDouble("Shadow distance", &view.vsgView->viewDependentState->maxShadowDistance, 0.0, 1000000.0, "%.0lf", ImGuiSliderFlags_Logarithmic);

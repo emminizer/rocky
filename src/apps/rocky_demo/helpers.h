@@ -155,6 +155,20 @@ namespace ImGuiLTable
         return ImGui::Checkbox(s.c_str(), v);
     }
 
+    static bool Checkbox(const char* label, unsigned* v)
+    {
+        if (!v) return false;
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        bool b = (*v) != 0;
+        auto ret = ImGui::Checkbox(s.c_str(), &b);
+        *v = b ? 1 : 0;
+        return ret;
+    }
+
     static bool BeginCombo(const char* label, const char* defaultItem)
     {
         ImGui::TableNextColumn();

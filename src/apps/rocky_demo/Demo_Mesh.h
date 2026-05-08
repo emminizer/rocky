@@ -29,9 +29,9 @@ auto Demo_Mesh_Absolute = [](Application& app)
         const double min_lon = 0.0, max_lon = 35.0;
         const double min_lat = 15.0, max_lat = 35.0;
 
-        for (double lon = 0.0; lon < 35.0; lon += step)
+        for (double lon = min_lon; lon < max_lon; lon += step)
         {
-            for(double lat = 15.0; lat < 35.0; lat += step)
+            for(double lat = min_lat; lat < max_lat; lat += step)
             {
                 auto v1 = glm::dvec3(lon, lat, alt);
                 auto v2 = glm::dvec3(lon + step, lat, alt);

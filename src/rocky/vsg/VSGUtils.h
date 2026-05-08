@@ -20,7 +20,7 @@ namespace ROCKY_NAMESPACE
         template<class T>
         struct FindNodeVisitor : public vsg::Inherit<vsg::Visitor, FindNodeVisitor<T>>
         {
-            T* found = nullptr;
+            vsg::ref_ptr<T> found = nullptr;
             void apply(vsg::Node& node) override
             {
                 if (!found)
@@ -557,7 +557,7 @@ namespace ROCKY_NAMESPACE
 
         //! Finds the first node of a given type in a scene graph.
         template<class T>
-        inline T* find(vsg::Object* root)
+        inline vsg::ref_ptr<T> find(vsg::Object* root)
         {
             detail::FindNodeVisitor<T> visitor;
             root->accept(visitor);

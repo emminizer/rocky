@@ -57,7 +57,7 @@ namespace
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, {});
 
         // We need VSG's view-dependent data:
-        PipelineUtils::addViewDependentData(shaderSet, VK_SHADER_STAGE_VERTEX_BIT);
+        PipelineUtils::addViewDependentState(shaderSet, VK_SHADER_STAGE_VERTEX_BIT);
 
         // Note: 128 is the maximum size required by the Vulkan spec so don't increase it
         shaderSet->addPushConstantRange("pc", "", VK_SHADER_STAGE_VERTEX_BIT, 0, 128);
@@ -215,7 +215,7 @@ LineSystemNode::initialize(VSGContext vsgcontext)
         c.config->enableDescriptor("line");
 
         // always both
-        PipelineUtils::enableViewDependentData(c.config);
+        PipelineUtils::enableViewDependentState(c.config);
 
         struct SetPipelineStates : public vsg::Visitor
         {

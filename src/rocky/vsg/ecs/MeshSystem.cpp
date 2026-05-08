@@ -68,7 +68,7 @@ namespace
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
         // We need VSG's view-dependent data for lighting support
-        PipelineUtils::addViewDependentData(shaderSet, VK_SHADER_STAGE_FRAGMENT_BIT);
+        PipelineUtils::addViewDependentState(shaderSet);
 
         // Note: 128 is the maximum size required by the Vulkan spec so don't increase it
         shaderSet->addPushConstantRange("pc", "", VK_SHADER_STAGE_VERTEX_BIT, 0, 128);
@@ -287,7 +287,7 @@ MeshSystemNode::initialize(VSGContext vsgcontext)
         c.config->enableArray("in_color", VK_VERTEX_INPUT_RATE_VERTEX, 16);
         c.config->enableArray("in_uv", VK_VERTEX_INPUT_RATE_VERTEX, 8);
 
-        PipelineUtils::enableViewDependentData(c.config);
+        PipelineUtils::enableViewDependentState(c.config);
         
         struct SetPipelineStates : public vsg::Visitor
         {
