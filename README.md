@@ -63,6 +63,12 @@ set PROJ_DATA=%proj_install_dir%/share/proj
 
 If you built with `vcpkg` you will also need to add the dependencies folder to your path; this will normally be found in `vcpkg_installed/x64-windows` (or whatever platform you are using).
 
+If you want Rocky to be able to do conversions between vertical datums you'll need some supporting PROJ data.  You can run the projsync (normally found in `vcpkg_installed/x64-windows/tools/proj`) command to download everything you need 
+
+```bat
+projsync --system-directory --all
+```
+
 Now we're ready:
 ```
 rocky_demo
