@@ -72,6 +72,8 @@ LabelSystem::LabelSystem(Registry& registry) :
 
             auto size = ImGui::GetWindowSize();
 
+            i.checkFocus();
+
             ImGui::End();
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
