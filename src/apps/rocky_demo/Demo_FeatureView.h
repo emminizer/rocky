@@ -62,8 +62,11 @@ auto Demo_FeatureView = [](Application& app)
             lineStyle.depthOffset = 50000;
             lineStyle.resolution = 10000.0; // max segment length in meters for tessellation
 
-            FeatureView::generateLine(meridians, lineStyle, GeoPoint{}, ElevationSession{}, app.mapNode->srs(), lineGeom);
-            FeatureView::generateLine(parallels, lineStyle, GeoPoint{}, ElevationSession{}, app.mapNode->srs(), lineGeom);
+            GeoPoint offset; // unused
+            ElevationSession session; // unused
+
+            FeatureView::generateLine(meridians, lineStyle, offset, session, app.mapNode->srs(), lineGeom);
+            FeatureView::generateLine(parallels, lineStyle, offset, session, app.mapNode->srs(), lineGeom);
 
             // The Line ties it all together:
             reg.emplace<Line>(entity, lineGeom, lineStyle);

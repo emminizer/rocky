@@ -738,7 +738,7 @@ VSGContextImpl::compileRenderGraph(vsg::ref_ptr<vsg::RenderGraph> renderGraph, v
     auto result = viewer()->compileManager->compile(renderGraph, 
         [view](vsg::Context& compileContext) -> bool
         {
-            return compileContext.view == view;
+            return compileContext.view.ref_ptr() == view;
         });
 
     // if something was compiled, we need to update the viewer:
