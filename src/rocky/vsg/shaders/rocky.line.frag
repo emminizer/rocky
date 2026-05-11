@@ -11,12 +11,12 @@ layout(location = 1) in float lateral;
 layout(location = 2) flat in Varyings vary;
 
 // outputs
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec4 outColor;
 
 
 void main()
 {
-    out_color = vary.color;
+    outColor = vary.color;
 
     if (vary.color.a == 0.0)
     {
@@ -44,5 +44,5 @@ void main()
 
     //anti-aliasing (requires blending state be set)
     float L = abs(lateral);
-    out_color.a *= smoothstep(0.0, 1.0, 1.0 - (L * L));
+    outColor.a *= smoothstep(0.0, 1.0, 1.0 - (L * L));
 }

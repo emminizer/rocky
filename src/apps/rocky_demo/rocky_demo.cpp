@@ -146,14 +146,9 @@ struct MainGUI : public vsg::Inherit<ImGuiContextNode, MainGUI>
     {
         ImGui::SetCurrentContext(imguiContext);
         ImGui::Begin("Welcome to Rocky");
-        {
-            for (auto& demo : demos)
-            {
-                render(demo);
-            }
-        }
+        for (auto& demo : demos)
+            render(demo);
         ImGui::End();
-
         renderAttribution();
     }
 

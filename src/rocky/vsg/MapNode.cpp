@@ -1,6 +1,6 @@
 /**
  * rocky c++
- * Copyright 2023 Pelican Mapping
+ * Copyright 2026 Pelican Mapping
  * MIT License
  */
 #include "MapNode.h"
@@ -12,6 +12,8 @@
 using namespace ROCKY_NAMESPACE;
 using namespace ROCKY_NAMESPACE::detail;
 
+#define MAP_SETTINGS_UBO_BINDING 8
+
 #undef LC
 #define LC "[MapNode] "
 
@@ -21,6 +23,10 @@ MapNode::MapNode(VSGContext context)
 
     terrainNode = TerrainNode::create(context);
     this->addChild(terrainNode);
+
+    // set up the map-level UBO and install it in the terrain node.
+    configureState(context);
+    terrainNode->state->add(_mapDescriptors.ubo);
 
     // default to geodetic:
     profile = Profile("global-geodetic");
@@ -139,8 +145,28 @@ MapNode::update(VSGContext vsgcontext)
 }
 
 void
+MapNode::configureState(VSGContext context)
+{
+    // global settings uniform setup
+    _mapDescriptors.data = vsg::ubyteArray::create(sizeof(MapDescriptors::Uniforms));
+    _mapDescriptors.data->properties.dataVariance = vsg::DYNAMIC_DATA;
+    _mapDescriptors.ubo = vsg::DescriptorBuffer::create(_mapDescriptors.data, MAP_SETTINGS_UBO_BINDING);
+
+    // initialize to the defaults
+    auto& uniforms = *static_cast<MapDescriptors::Uniforms*>(_mapDescriptors.data->dataPointer());
+    uniforms = MapDescriptors::Uniforms();
+}
+
+void
 MapNode::traverse(vsg::RecordTraversal& record) const
 {
+    // update the ubo
+    auto& uniforms = *static_cast<MapDescriptors::Uniforms*>(_mapDescriptors.data->dataPointer());
+    uniforms.ellipsoidAxes.x = srs().ellipsoid().semiMajorAxis();
+    uniforms.ellipsoidAxes.y = srs().ellipsoid().semiMinorAxis();
+    _mapDescriptors.data->dirty();
+
+
     auto viewID = record.getCommandBuffer()->viewID;
 
     auto& horizon = _horizon[viewID];

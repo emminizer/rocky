@@ -16,7 +16,7 @@ struct Instance
     vec4 viewport;          // viewport x,y,w,h
     float rotation;         // rotation, radians
     float size;             // size in pixels; 0 = not visible
-    int texture_index;      // ID of icon texture, -1 = error
+    int textureIndex;      // ID of icon texture, -1 = error
     float padding[1];       // pad to 16 bytes
 };
 

@@ -9,32 +9,32 @@ layout(push_constant) uniform PushConstants {
 // inter-stage interface block
 layout(location = 0) in Varyings {
     vec2 uv;
-    vec3 normal_vs;
-    vec3 vertex_vs;
-    vec3 viewdir_ecef;
-    vec3 camera_ecef;
-    vec3 sundir_ecef;
+    vec3 normalVs;
+    vec3 vertexVs;
+    vec3 lookWs;
+    vec3 cameraWs;
+    vec3 sunDirEcef;
     float discardVert;
 } vary;
 
 // uniforms (TerrainState.h)
-layout(set = 0, binding = 9) uniform TerrainData {
+layout(set = 0, binding = 9) uniform TerrainSettings {
     vec4 backgroundColor;
-    vec2 ellipsoidAxes;
     float atmosphere;
     float lighting;
     float debugTriangles;
     float debugNormals;
-} settings;
+} u_terrain;
 
-layout(set = 0, binding = 11) uniform sampler2D color_tex;
+layout(set = 0, binding = 11) uniform sampler2D u_colorTex;
 
-#pragma include "rocky.debug.frag.glsl"
+#pragma include "rocky.viewdependentstate.glsl"
 #pragma include "rocky.lighting.glsl"
 #pragma include "rocky.atmo.glsl"
+#pragma include "rocky.debug.frag.glsl"
 
 // outputs
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec4 outColor;
 
 void main()
 {
@@ -42,27 +42,28 @@ void main()
         discard;
 
     // sample the imagery color
-    vec4 texel = texture(color_tex, vary.uv);
+    vec4 texel = texture(u_colorTex, vary.uv);
 
     // mix in the background color
-    out_color = mix(settings.backgroundColor, clamp(texel, 0, 1), texel.a);
+    outColor = mix(u_terrain.backgroundColor, clamp(texel, 0, 1), texel.a);
 
-    vec3 normal_vs = normalize(vary.normal_vs);
+    vec3 normalVs = normalize(vary.normalVs);
 
     // debug normals
-    out_color.rgb = mix(out_color.rgb, (normal_vs + 1.0) * 0.5, settings.debugNormals);
+    outColor.rgb = mix(outColor.rgb, (normalVs + 1.0) * 0.5, u_terrain.debugNormals);
 
 #if defined(ROCKY_ATMOSPHERE)
-    vec3 ground_color = apply_atmo_color_to_ground(out_color.rgb, vary.vertex_vs, vary.viewdir_ecef,
-        vary.camera_ecef, normalize(vary.sundir_ecef), settings.ellipsoidAxes);
+    vec3 ground_color = applyAtmoColorToGround(
+        outColor.rgb, vary.vertexVs, vary.lookWs,
+        vary.cameraWs, normalize(vary.sunDirEcef), u_vds.ellipsoidAxes);
 
-    out_color.rgb = mix(out_color.rgb, ground_color, settings.lighting * settings.atmosphere);
+    outColor.rgb = mix(outColor.rgb, ground_color, u_terrain.lighting * u_terrain.atmosphere);
 #endif
 
     // PBR lighting
-    vec4 lit_color = apply_lighting(out_color, vary.vertex_vs, normal_vs);
-    out_color = mix(out_color, lit_color, settings.lighting);
+    vec4 lit_color = applyLighting(outColor, vary.vertexVs, normalVs);
+    outColor = mix(outColor, lit_color, u_terrain.lighting);
 
     // show triangle outlines
-    apply_debug_triangles(out_color, settings.debugTriangles);
+    applyDebugTriangles(outColor, u_terrain.debugTriangles);
 }

@@ -4,8 +4,14 @@
  * MIT License
  */
 #include "ElevationSampler.h"
+#include "Cache.h"
 
 using namespace ROCKY_NAMESPACE;
+
+ElevationSampler::ElevationSampler()
+{
+    cache = std::make_shared<detail::LRUCache<TileKey, Result<GeoImage>>>(64);
+}
 
 auto ElevationSampler::fetch(const TileKey& key, const IOOptions& io) const -> Result<GeoImage>
 {

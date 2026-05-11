@@ -1,6 +1,6 @@
 /**
  * rocky c++
- * Copyright 2025 Pelican Mapping
+ * Copyright 2026 Pelican Mapping
  * MIT License
  */
 #pragma once
@@ -13,15 +13,69 @@ namespace ROCKY_NAMESPACE
     constexpr int VSG_VIEW_DEPENDENT_DESCRIPTOR_SET_INDEX = 1;
     constexpr int VSG_VIEW_DEPENDENT_LIGHTS_BINDING = 0;
     constexpr int VSG_VIEW_DEPENDENT_VIEWPORTS_BINDING = 1;
+    constexpr int VSG_VIEW_DEPENDENT_ROCKY_BINDING = 10;
+
+    class MapNode;
+
+    /**
+    * Custom ViewDependentState that adds data for Rocky rendering.
+    * Shader usage (where "binding" === VSG_VIEW_DEPENDENT_ROCKY_BINDING)
+    *
+    *   layout(set = 1, binding = 10) uniform RockyVDS {
+    *       mat4 inverseViewMatrix;
+    *       vec2 ellipsoidAxes;
+    *       float stereographic;
+    *       float _padding[1];
+    *   } u_vds;
+    *
+    */
+    class ROCKY_EXPORT RockyViewDependentState : public vsg::Inherit<vsg::ViewDependentState, RockyViewDependentState>
+    {
+    public:
+        RockyViewDependentState(vsg::ref_ptr<vsg::View> vsgView) : Inherit(vsgView) {
+            //nop
+        }
+
+        struct MyDescriptors
+        {
+            struct Uniforms
+            {
+                vsg::mat4 inverseViewMatrix;
+                vsg::vec2 ellipsoidAxes;
+                std::uint32_t stereographic; // bool
+                float _padding[1];
+            };
+            vsg::ref_ptr<vsg::Data> data;
+            vsg::ref_ptr<vsg::Descriptor> ubo;
+        };
+
+        MyDescriptors::Uniforms& uniforms() {
+            return *static_cast<MyDescriptors::Uniforms*>(_myDescriptors.data->dataPointer());
+        }
+
+        void dirty() {
+            _myDescriptors.data->dirty();
+        }
+
+    public:
+        void init(vsg::ResourceRequirements& req) override;
+
+        void traverse(vsg::RecordTraversal& rt) const override;
+
+    protected:
+        MyDescriptors _myDescriptors;
+        mutable vsg::observer_ptr<MapNode> _mapNode;
+
+    };
     
 
     //! Utilities for helping to set up a graphics pipeline.
     struct PipelineUtils
     {
-        static void addViewDependentData(vsg::ShaderSet* shaderSet, VkShaderStageFlags stageFlags)
+        static void addViewDependentState(vsg::ShaderSet* shaderSet, VkShaderStageFlags stageFlags = VK_SHADER_STAGE_ALL)
         {
             // override it because we're getting weird VK errors -gw
-            stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            //stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
             // VSG view-dependent data. You must include it all even if you only intend to use
             // one of the uniforms.
@@ -42,22 +96,31 @@ namespace ROCKY_NAMESPACE
                 VSG_VIEW_DEPENDENT_VIEWPORTS_BINDING,
                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
                 stageFlags, {});
+
+            shaderSet->addDescriptorBinding(
+                "rocky_vds", "",
+                VSG_VIEW_DEPENDENT_DESCRIPTOR_SET_INDEX,
+                VSG_VIEW_DEPENDENT_ROCKY_BINDING,
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+                stageFlags, {});
         }
 
-        static vsg::ref_ptr<vsg::DescriptorSetLayout> getViewDependentDescriptorSetLayout()
+        static vsg::ref_ptr<vsg::DescriptorSetLayout> getViewDependentStateDescriptorSetLayout()
         {
             return vsg::DescriptorSetLayout::create(
                 vsg::DescriptorSetLayoutBindings{
-                    {VSG_VIEW_DEPENDENT_LIGHTS_BINDING, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT},
-                    {VSG_VIEW_DEPENDENT_VIEWPORTS_BINDING, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT}
+                    {VSG_VIEW_DEPENDENT_LIGHTS_BINDING, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL},
+                    {VSG_VIEW_DEPENDENT_VIEWPORTS_BINDING, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_ALL},
+                    {VSG_VIEW_DEPENDENT_ROCKY_BINDING, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL}
                 }
             );
         }
 
-        static void enableViewDependentData(vsg::ref_ptr<vsg::GraphicsPipelineConfigurator> pipelineConfig)
+        static void enableViewDependentState(vsg::ref_ptr<vsg::GraphicsPipelineConfigurator> pipelineConfig)
         {
             pipelineConfig->enableDescriptor("vsg_lights");
             pipelineConfig->enableDescriptor("vsg_viewports");
+            pipelineConfig->enableDescriptor("rocky_vds");
         }
     };
 

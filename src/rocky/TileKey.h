@@ -15,6 +15,14 @@ namespace ROCKY_NAMESPACE
 {
     class GeoPoint;
 
+    namespace detail
+    {
+        inline void hashCombine(std::size_t& seed, std::size_t value)
+        {
+            seed ^= value + 0x9e3779b97f4a7c15ull + (seed << 6) + (seed >> 2);
+        }
+    }
+
     /**
      * Uniquely identifies a single tile on the map, relative to a Profile.
      * Profiles have an origin of 0,0 at the top left.
@@ -135,5 +143,23 @@ namespace ROCKY_NAMESPACE
         //! @param profile The profile for which to calculate the intersecting keys
         //! @return A vector of TileKeys that intersect this key's extent in the given profile.
         std::vector<TileKey> intersectingKeys(const Profile& profile) const;
+
+        //! Gets a hash code compatible with operator==.
+        inline std::size_t hash() const {
+            std::size_t seed = 0;
+            detail::hashCombine(seed, std::hash<unsigned>()(level));
+            detail::hashCombine(seed, std::hash<unsigned>()(x));
+            detail::hashCombine(seed, std::hash<unsigned>()(y));
+            detail::hashCombine(seed, std::hash<Profile>()(profile));
+            return seed;
+        }
+    };
+}
+
+namespace std {
+    template<> struct hash<rocky::TileKey> {
+        inline size_t operator()(const rocky::TileKey& value) const {
+            return value.hash();
+        }
     };
 }

@@ -20,23 +20,26 @@
 #define TERRAIN_VERT_SHADER "shaders/rocky.terrain.vert"
 #define TERRAIN_FRAG_SHADER "shaders/rocky.terrain.frag"
 
-#define SETTINGS_UBO_NAME "settings"
-#define SETTINGS_UBO_BINDING 9
+#define MAP_SETTINGS_UBO_NAME "map"
+#define MAP_SETTINGS_UBO_BINDING 8
 
-#define ELEVATION_TEX_NAME "elevation_tex"
+#define TERRAIN_SETTINGS_UBO_NAME "u_terrain"
+#define TERRAIN_SETTINGS_UBO_BINDING 9
+
+#define ELEVATION_TEX_NAME "u_elevationTex"
 #define ELEVATION_TEX_BINDING 10
 
-#define COLOR_TEX_NAME "color_tex"
+#define COLOR_TEX_NAME "u_colorTex"
 #define COLOR_TEX_BINDING 11
 
 #define NORMAL_TEX_NAME "normal_tex"
 #define NORMAL_TEX_BINDING 12
 
-#define TILE_UBO_NAME "tile"
+#define TILE_UBO_NAME "u_tile"
 #define TILE_UBO_BINDING 13
 
-#define ATTR_VERTEX "in_vertex"
-#define ATTR_NORMAL "in_normal"
+#define ATTR_VERTEX "in_vertexTs"
+#define ATTR_NORMAL "in_upTs"
 #define ATTR_UV "in_uvw"
 #define ATTR_VERTEX_NEIGHBOR "in_vertex_neighbor"
 #define ATTR_NORMAL_NEIGHBOR "in_normal_neighbor"
@@ -211,12 +214,15 @@ TerrainState::createShaderSet(VSGContext context) const
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, 
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
-    shaderSet->addDescriptorBinding(SETTINGS_UBO_NAME, "", 0, SETTINGS_UBO_BINDING,
+    shaderSet->addDescriptorBinding(TERRAIN_SETTINGS_UBO_NAME, "", 0, TERRAIN_SETTINGS_UBO_BINDING,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
-    PipelineUtils::addViewDependentData(shaderSet,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    shaderSet->addDescriptorBinding(MAP_SETTINGS_UBO_NAME, "", 0, MAP_SETTINGS_UBO_BINDING,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, {});
+
+    PipelineUtils::addViewDependentState(shaderSet);
 
     // Note: 128 is the maximum size required by the Vulkan spec, 
     // so don't increase it :)
@@ -249,9 +255,10 @@ TerrainState::createPipelineConfig(VSGContext context) const
     //config->enableTexture(texturedefs.normal.name);
 
     config->enableDescriptor(TILE_UBO_NAME);
-    config->enableDescriptor(SETTINGS_UBO_NAME);
+    config->enableDescriptor(TERRAIN_SETTINGS_UBO_NAME);
+    config->enableDescriptor(MAP_SETTINGS_UBO_NAME);
 
-    PipelineUtils::enableViewDependentData(config);
+    PipelineUtils::enableViewDependentState(config);
 
     struct SetPipelineStates : public vsg::Visitor
     {
@@ -269,6 +276,12 @@ TerrainState::createPipelineConfig(VSGContext context) const
     return config;
 }
 
+void
+TerrainState::add(vsg::ref_ptr<vsg::Descriptor> descriptor)
+{
+    _additionalDescriptors.emplace_back(descriptor);
+}
+
 vsg::ref_ptr<vsg::StateGroup>
 TerrainState::createTerrainStateGroup(VSGContext context)
 {
@@ -284,7 +297,7 @@ TerrainState::createTerrainStateGroup(VSGContext context)
         // global settings uniform setup
         _terrainDescriptors.data = vsg::ubyteArray::create(sizeof(TerrainDescriptors::Uniforms));
         _terrainDescriptors.data->properties.dataVariance = vsg::DYNAMIC_DATA;
-        _terrainDescriptors.ubo = vsg::DescriptorBuffer::create(_terrainDescriptors.data, SETTINGS_UBO_BINDING);
+        _terrainDescriptors.ubo = vsg::DescriptorBuffer::create(_terrainDescriptors.data, TERRAIN_SETTINGS_UBO_BINDING);
 
         // initialize to the defaults
         auto& uniforms = *static_cast<TerrainDescriptors::Uniforms*>(_terrainDescriptors.data->dataPointer());
@@ -397,12 +410,12 @@ TerrainState::updateRenderModel(const TileKey& key, const TerrainTileRenderModel
     uniforms.span = key.extent().height(Units::METERS);
     descriptors.uniforms = vsg::DescriptorBuffer::create(ubo, TILE_UBO_BINDING);
 
-    // make the descriptor set, including terrain settings UBO and atmosphere UBO
+    // make the descriptor set, including terrain settings UBO and external UBOs
     vsg::Descriptors allDescriptors{ descriptors.elevation, descriptors.color, descriptors.uniforms, _terrainDescriptors.ubo };
-    //if (_atmosDescriptor)
-    //{
-    //    allDescriptors.push_back(_atmosDescriptor);
-    //}
+
+    // add any "user" descriptors (including the map's)
+    allDescriptors.insert(allDescriptors.end(), _additionalDescriptors.begin(), _additionalDescriptors.end());
+    
     auto descriptorSet = vsg::DescriptorSet::create(
         pipelineConfig->layout->setLayouts[0],
         allDescriptors
@@ -425,13 +438,8 @@ TerrainState::updateRenderModel(const TileKey& key, const TerrainTileRenderModel
 void
 TerrainState::updateProfile(const Profile& profile)
 {
-    auto& ellipsoid = profile.srs().geodeticSRS().ellipsoid();
-
-    auto& uniforms = *static_cast<TerrainDescriptors::Uniforms*>(_terrainDescriptors.data->dataPointer());
-
-    uniforms.ellipsoidAxes.x = ellipsoid.semiMajorAxis();
-    uniforms.ellipsoidAxes.y = ellipsoid.semiMinorAxis();
-    _terrainDescriptors.data->dirty();
+    //auto& uniforms = *static_cast<TerrainDescriptors::Uniforms*>(_terrainDescriptors.data->dataPointer());
+    //_terrainDescriptors.data->dirty();
 }
 
 void

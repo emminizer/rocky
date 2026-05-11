@@ -28,7 +28,7 @@ struct PointStyle {
 
 layout(set = 0, binding = 1) uniform PointUniform {
     PointStyle style;
-} point;
+} u_point;
 
 layout(location = 1) out Varyings {
     flat vec4 color;
@@ -41,33 +41,22 @@ out gl_PerVertex {
     float gl_PointSize;
 };
 
-// Moves the vertex closer to the camera by the specified bias,
-// clamping it beyond the near clip plane if necessary.
-vec3 apply_depth_offset(in vec3 vertex, in float offset)
-{
-    float n = -pc.projection[3][2] / (pc.projection[2][2] + 1.0); // near plane
-    float t_n = (-n + 1.0) / -vertex.z; // [0..1] -> [n+1 .. vertex]
-    if (t_n <= 0.0) return vertex; // already behind near plane
-    float len = length(vertex);
-    float t_offset = 1.0 - (offset/len);
-    return vertex * max(t_n, t_offset);
-}
+#pragma include "rocky.viewdependentstate.glsl"
+#pragma include "rocky.projection.glsl"
+#pragma include "rocky.depthoffset.glsl"
 
 void main()
 {    
-    bool perVertexColor = (point.style.perVertexMask & PER_VERTEX_COLOR) != 0;
-    bool perVertexWidth = (point.style.perVertexMask & PER_VERTEX_WIDTH) != 0;
+    bool perVertexColor = (u_point.style.perVertexMask & PER_VERTEX_COLOR) != 0;
+    bool perVertexWidth = (u_point.style.perVertexMask & PER_VERTEX_WIDTH) != 0;
 
-    vary.color = perVertexColor ? in_color : point.style.color;
-    vary.antialias = point.style.antialias;
-
-    float depthOffset = point.style.depthOffset;
+    vary.color = perVertexColor ? in_color : u_point.style.color;
+    vary.antialias = u_point.style.antialias;
     
-    // Depth offset (view-space approach):
     vec4 view = pc.modelview * vec4(in_vertex, 1);
-    view.xyz = apply_depth_offset(view.xyz, depthOffset);
-    vec4 clip = pc.projection * view;
+    view = applyProjection(view);
+    view = applyDepthOffset(view, u_point.style.depthOffset);
 
-    gl_PointSize = (perVertexWidth ? in_width : point.style.width) * point.style.devicePixelRatio;
-    gl_Position = clip;
+    gl_PointSize = (perVertexWidth ? in_width : u_point.style.width) * u_point.style.devicePixelRatio;
+    gl_Position = pc.projection * view;
 }

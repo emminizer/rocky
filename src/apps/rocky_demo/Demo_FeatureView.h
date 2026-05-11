@@ -14,26 +14,59 @@ auto Demo_FeatureView = [](Application& app)
 
         if (entity == entt::null)
         {
-            // A Feature represents geometry and properties in a spatial context.
-            Feature feature;
+            auto&& [_, reg] = app.registry.write();
 
-            feature.interpolation = GeodeticInterpolation::GreatCircle;
-            feature.geometry.type = Geometry::Type::LineString;
-            feature.srs = SRS::WGS84;
-            feature.geometry.points = {
-                { -0.1276, 51.5074, 0.0 }, // London
-                { 72.8777, 19.0760, 0.0 }, // Mumbai
-                { 153.0211, -27.4698, 0.0 } // Brisbane
-            };
+            // Let's make a simple graticule.
+            // We need to separate meridians from paralles since the interpolation is different
+            // (great circle vs rhumb line).
 
-            // Helper utility to build renderable components from our Feature:
-            FeatureView view;
-            view.features.emplace_back(std::move(feature));
-            view.styles.lineStyle.color = StockColor::Yellow;
-            view.styles.lineStyle.stipplePattern = 0xF0F0; // dashed line
-            view.styles.lineStyle.depthOffset = 50000;
+            Feature meridians;
+            meridians.geometry.type = Geometry::Type::MultiLineString;
+            meridians.interpolation = GeodeticInterpolation::GreatCircle;
+            meridians.srs = SRS::WGS84;
+            meridians.geometry.parts.reserve(36);
+            for (int i = -180; i < 180; i += 10)
+            {
+                meridians.geometry.parts.emplace_back().points = {
+                    { (double)i, -80.0, 0.0 },
+                    { (double)i,  80.0, 0.0 },
+                };
+            }
 
-            entity = view.generate(app.mapNode->srs(), app.registry);
+            Feature parallels;
+            parallels.geometry.type = Geometry::Type::MultiLineString;
+            parallels.interpolation = GeodeticInterpolation::RhumbLine;
+            parallels.srs = SRS::WGS84;
+            parallels.geometry.parts.reserve(17);
+            for (int i = -80; i <= 80; i += 10)
+            {
+                parallels.geometry.parts.emplace_back().points = {
+                    { -180.0, (double)i, 0.0 },
+                    {  -90.0, (double)i, 0.0 },
+                    {    0.0, (double)i, 0.0 },
+                    {   90.0, (double)i, 0.0 },
+                    {  180.0, (double)i, 0.0 }
+                };
+            }
+
+            entity = reg.create();
+
+            // A Geometry to hold the results. We have to use the "Segments"
+            // topology since the data is not one continuous strip.
+            auto& lineGeom = reg.emplace<LineGeometry>(entity);
+            lineGeom.topology = LineTopology::Segments;
+
+            // And a style:
+            auto& lineStyle = reg.emplace<LineStyle>(entity);
+            lineStyle.color = StockColor::Gray;
+            lineStyle.depthOffset = 50000;
+            lineStyle.resolution = 10000.0; // max segment length in meters for tessellation
+
+            FeatureView::generateLine(meridians, lineStyle, GeoPoint{}, ElevationSession{}, app.mapNode->srs(), lineGeom);
+            FeatureView::generateLine(parallels, lineStyle, GeoPoint{}, ElevationSession{}, app.mapNode->srs(), lineGeom);
+
+            // The Line ties it all together:
+            reg.emplace<Line>(entity, lineGeom, lineStyle);
 
             app.vsgcontext->requestFrame();
         }

@@ -158,7 +158,7 @@ float distToAtmo(vec3 origin, vec3 dir, float rAtmos)
 // -------------------------------------------------------------------
 // ACES filmic tone mapping
 // -------------------------------------------------------------------
-vec3 ACESFilmic(vec3 x)
+vec3 acesFilmic(vec3 x)
 {
     float a = 2.51;
     float b = 0.03;
@@ -176,7 +176,7 @@ float luminance(vec3 color)
 // -------------------------------------------------------------------
 // Camera ECEF extraction from modelview matrix
 // -------------------------------------------------------------------
-vec3 cameraPositionECEF(mat4 modelview)
+vec3 cameraPositionEcef(mat4 modelview)
 {
     // The camera position in world space is -inverse(mat3(MV)) * MV[3].xyz
     // For an orthonormal rotation (no scale), inverse(mat3) == transpose(mat3)
@@ -187,36 +187,36 @@ vec3 cameraPositionECEF(mat4 modelview)
 
 // Apply aerial perspective to a lit terrain color.
 // color: the lit terrain color (linear HDR)
-// vertex_vs: vertex position in view space
-// viewdir_ecef: view direction in ECEF, computed from view space (avoids float cancellation)
-// camera_ecef: camera position in ECEF world space
-// sundir_ecef: normalized vector pointing towards the sun in ECEF
+// vertexVs: vertex position in view space
+// viewDirEcef: view direction in ECEF, computed from view space (avoids float cancellation)
+// cameraEcef: camera position in ECEF world space
+// sunDirEcef: normalized vector pointing towards the sun in ECEF
 // Returns the color with aerial perspective applied.
-vec3 apply_atmo_color_to_ground(
+vec3 applyAtmoColorToGround(
     vec3 color,
-    vec3 vertex_vs,
-    vec3 viewdir_ecef,
-    vec3 camera_ecef,
-    vec3 sundir_ecef,
+    vec3 vertexVs,
+    vec3 viewDirEcef,
+    vec3 cameraEcef,
+    vec3 sunDirEcef,
     vec2 ellipsoidAxes)
 {
-    float dist = length(vertex_vs);
-    vec3 viewDir = normalize(viewdir_ecef);
-    vec3 vertex_ecef = camera_ecef + viewDir * dist;
+    float dist = length(vertexVs);
+    vec3 viewDir = normalize(viewDirEcef);
+    vec3 vertexEcef = cameraEcef + viewDir * dist;
 
-    float lat = abs(dot(normalize(vertex_ecef), vec3(0, 0, 1)));
+    float lat = abs(dot(normalize(vertexEcef), vec3(0, 0, 1)));
     float rPlanet = mix(ellipsoidAxes.x, ellipsoidAxes.y, lat);
     float rAtmos = rPlanet + ATMO_THICKNESS;
 
     // Altitudes
-    float h_camera = length(camera_ecef) - rPlanet;
-    float h_surface = length(vertex_ecef) - rPlanet;
-    float h_avg = max(0.5 * (h_camera + h_surface), 0.0);
+    float hCamera = length(cameraEcef) - rPlanet;
+    float hSurface = length(vertexEcef) - rPlanet;
+    float hAvg = max(0.5 * (hCamera + hSurface), 0.0);
 
     // Density at average altitude
-    float rhoR = rayleighDensity(h_avg);
-    float rhoM = mieDensity(h_avg);
-    float rhoO3 = ozoneDensity(h_avg);
+    float rhoR = rayleighDensity(hAvg);
+    float rhoM = mieDensity(hAvg);
+    float rhoO3 = ozoneDensity(hAvg);
 
     // Combined extinction at average altitude
     vec3 avgExt = BETA_RAYLEIGH * rhoR + BETA_MIE_EXT * rhoM + BETA_OZONE * rhoO3;
@@ -225,11 +225,11 @@ vec3 apply_atmo_color_to_ground(
     vec3 viewTransmittance = exp(-avgExt * dist);
 
     // Inscattering approximation at the midpoint
-    vec3 midpoint = camera_ecef + viewDir * dist * 0.5;
-    float sunPathLen = distToAtmo(midpoint, sundir_ecef, rAtmos);
-    vec3 sunTransmitMid = transmittance(midpoint, sundir_ecef, sunPathLen, rPlanet, 4);
+    vec3 midpoint = cameraEcef + viewDir * dist * 0.5;
+    float sunPathLen = distToAtmo(midpoint, sunDirEcef, rAtmos);
+    vec3 sunTransmitMid = transmittance(midpoint, sunDirEcef, sunPathLen, rPlanet, 4);
 
-    float cosTheta = dot(viewDir, sundir_ecef);
+    float cosTheta = dot(viewDir, sunDirEcef);
     float phaseR = rayleighPhase(cosTheta);
     float phaseM = miePhase(cosTheta, MIE_G);
 

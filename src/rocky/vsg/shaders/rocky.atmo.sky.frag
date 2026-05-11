@@ -12,15 +12,15 @@ layout(push_constant) uniform PushConstants {
 layout(set = 0, binding = 0) uniform SkyUniforms {
     vec2 ellipsoidAxes;
     float padding[2];
-} atmo;
+} u_atmo;
 
 // Input varyings from vertex shader
-layout(location = 0) in vec3 v_worldPos;
-layout(location = 1) in vec3 v_camera_ecef;
-layout(location = 2) in vec3 v_sundir_ecef;
+layout(location = 0) in vec3 worldPos;
+layout(location = 1) in vec3 cameraEcef;
+layout(location = 2) in vec3 sunDirEcef;
 
 // Output
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec4 outColor;
 
 #include "rocky.atmo.glsl"
 
@@ -30,16 +30,16 @@ layout(location = 0) out vec4 out_color;
 
 void main()
 {
-    float lat = abs(dot(normalize(v_worldPos), vec3(0, 0, 1)));
-    float rPlanet = mix(atmo.ellipsoidAxes.x, atmo.ellipsoidAxes.y, lat);
+    float lat = abs(dot(normalize(worldPos), vec3(0, 0, 1)));
+    float rPlanet = mix(u_atmo.ellipsoidAxes.x, u_atmo.ellipsoidAxes.y, lat);
     float rAtmos = rPlanet + ATMO_THICKNESS;
 
-    vec3 cameraPos = v_camera_ecef;
-    vec3 rayDir = normalize(v_worldPos - cameraPos);
+    vec3 cameraPos = cameraEcef;
+    vec3 rayDir = normalize(worldPos - cameraPos);
 
     float cameraHeight = length(cameraPos);
     float exposure = ATMO_EXPOSURE;
-    vec3 sunDir = normalize(v_sundir_ecef);
+    vec3 sunDir = normalize(sunDirEcef);
 
     // Intersect ray with atmosphere
     vec2 atmosHit = raySphereIntersect2(cameraPos, rayDir, rAtmos);
@@ -151,7 +151,7 @@ void main()
     }
 
     // Tone mapping
-    vec3 color = ACESFilmic(scatteredLight * exposure);
+    vec3 color = acesFilmic(scatteredLight * exposure);
 
     // With additive blending, rays that hit the ground must output zero
     // so they contribute nothing on top of the terrain.
@@ -160,5 +160,5 @@ void main()
         color = vec3(0.0);
     }
 
-    out_color = vec4(color, 1.0);
+    outColor = vec4(color, 1.0);
 }

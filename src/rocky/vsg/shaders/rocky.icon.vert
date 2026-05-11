@@ -11,7 +11,7 @@ layout(set = 0, binding = 1) uniform IconStyle {
     float size;
     float rotation;
     float padding[2];
-} icon;
+} u_icon;
 
 // vsg viewport data
 layout(set = 1, binding = 1) readonly buffer VSG_Viewports {
@@ -42,8 +42,8 @@ void main()
     vec2 pixel_size = 2.0 / viewport_size;
 
     // scale and rotate:
-    float sr = sin(icon.rotation), cr = cos(icon.rotation);
-    vec2 offset = mat2(cr, sr, -sr, cr) * (icon.size * signs * 0.5);
+    float sr = sin(u_icon.rotation), cr = cos(u_icon.rotation);
+    vec2 offset = mat2(cr, sr, -sr, cr) * (u_icon.size * signs * 0.5);
 
     clip.xy += (offset * pixel_size * clip.w);
 

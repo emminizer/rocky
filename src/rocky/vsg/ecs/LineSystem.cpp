@@ -49,15 +49,15 @@ namespace
 
         // "binding" (3rd param) must match "layout(location=X) in" in the vertex shader
         shaderSet->addAttributeBinding("in_vertex",      "", 0, VK_FORMAT_R32G32B32_SFLOAT, {});
-        shaderSet->addAttributeBinding("in_vertex_prev", "", 1, VK_FORMAT_R32G32B32_SFLOAT, {});
-        shaderSet->addAttributeBinding("in_vertex_next", "", 2, VK_FORMAT_R32G32B32_SFLOAT, {});
+        shaderSet->addAttributeBinding("in_vertexPrev", "", 1, VK_FORMAT_R32G32B32_SFLOAT, {});
+        shaderSet->addAttributeBinding("in_vertexNext", "", 2, VK_FORMAT_R32G32B32_SFLOAT, {});
         shaderSet->addAttributeBinding("in_color",       "", 3, VK_FORMAT_R32G32B32A32_SFLOAT, {});
 
-        shaderSet->addDescriptorBinding("line", "", LINE_SET, LINE_BINDING_UNIFORM,
+        shaderSet->addDescriptorBinding("u_line", "", LINE_SET, LINE_BINDING_UNIFORM,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, {});
 
         // We need VSG's view-dependent data:
-        PipelineUtils::addViewDependentData(shaderSet, VK_SHADER_STAGE_VERTEX_BIT);
+        PipelineUtils::addViewDependentState(shaderSet, VK_SHADER_STAGE_VERTEX_BIT);
 
         // Note: 128 is the maximum size required by the Vulkan spec so don't increase it
         shaderSet->addPushConstantRange("pc", "", VK_SHADER_STAGE_VERTEX_BIT, 0, 128);
@@ -207,15 +207,15 @@ LineSystemNode::initialize(VSGContext vsgcontext)
 
         // activate the arrays we intend to use
         c.config->enableArray("in_vertex", VK_VERTEX_INPUT_RATE_VERTEX, 12);
-        c.config->enableArray("in_vertex_prev", VK_VERTEX_INPUT_RATE_VERTEX, 12);
-        c.config->enableArray("in_vertex_next", VK_VERTEX_INPUT_RATE_VERTEX, 12);
+        c.config->enableArray("in_vertexPrev", VK_VERTEX_INPUT_RATE_VERTEX, 12);
+        c.config->enableArray("in_vertexNext", VK_VERTEX_INPUT_RATE_VERTEX, 12);
         c.config->enableArray("in_color", VK_VERTEX_INPUT_RATE_VERTEX, 16);
 
         // Uniforms we will need:
-        c.config->enableDescriptor("line");
+        c.config->enableDescriptor("u_line");
 
         // always both
-        PipelineUtils::enableViewDependentData(c.config);
+        PipelineUtils::enableViewDependentState(c.config);
 
         struct SetPipelineStates : public vsg::Visitor
         {

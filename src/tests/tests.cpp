@@ -3,6 +3,7 @@
 
 #include <rocky/rocky.h>
 #include <random>
+#include <unordered_map>
 
 #define ROCKY_EXPOSE_JSON_FUNCTIONS
 #include <rocky/json.h>
@@ -109,6 +110,12 @@ TEST_CASE("TileKey")
     CHECK(TileKey(2, 0, 0, p).quadKey() == "000");
     CHECK(TileKey(2, 1, 0, p).quadKey() == "001");
     CHECK(TileKey(2, 5, 1, p).quadKey() == "103");
+
+    std::unordered_map<TileKey, int> values;
+    values[TileKey(2, 1, 0, p)] = 42;
+
+    CHECK(values.at(TileKey(2, 1, 0, p)) == 42);
+    CHECK(values.find(TileKey(2, 1, 1, p)) == values.end());
 }
 
 TEST_CASE("Threading")
@@ -350,6 +357,21 @@ TEST_CASE("SRS")
 
         REQUIRE(xform_wgs84_to_ecef.inverse(out, out));
         CHECK(glm::all(glm::epsilonEqual(out, glm::dvec3(0, 0, 0), 1e-6)));
+    }
+
+    SECTION("Geocentric interpolation")
+    {
+        SRS wgs84("wgs84"); // geographic WGS84 (long/lat)
+        REQUIRE(wgs84.valid());
+
+        auto midpoint = wgs84.ellipsoid().geodesicInterpolate(
+            glm::dvec3(0, 0, 0),
+            glm::dvec3(90, 0, 0),
+            0.5);
+
+        CHECK(glm::epsilonEqual(midpoint.x, 45.0, 1e-9));
+        CHECK(glm::epsilonEqual(midpoint.y, 0.0, 1e-9));
+        CHECK(glm::epsilonEqual(midpoint.z, 0.0, 1e-6));
     }
 
     SECTION("Plate Carree SRS")

@@ -14,7 +14,7 @@ struct Instance
     vec4 viewport;          // viewport x,y,w,h
     float rotation;         // rotation, radians
     float size;             // size in pixels; 0 = not visible
-    int texture_index;      // ID of icon texture, -1 = error
+    int textureIndex;      // ID of icon texture, -1 = error
     float padding[1];       // pad to 16 bytes
 };
 
@@ -35,7 +35,7 @@ layout(location = 0) in vec3 in_vertex;
 
 // output varyings
 layout(location = 0) out vec2 uv;
-layout(location = 1) flat out int texture_index;
+layout(location = 1) flat out int textureIndex;
 
 // GL built-ins
 out gl_PerVertex
@@ -46,7 +46,7 @@ out gl_PerVertex
 void main()
 {    
     int i = gl_InstanceIndex;
-    texture_index = -1;
+    textureIndex = -1;
 
     vec4 clip = drawList[i].proj * drawList[i].modelview * vec4(0,0,0,1);
 
@@ -68,7 +68,7 @@ void main()
 
     if (drawList[i].size > 0.0)
     {
-        texture_index = drawList[i].texture_index;
+        textureIndex = drawList[i].textureIndex;
     }
 
     gl_Position = clip;

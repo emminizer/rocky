@@ -1,12 +1,60 @@
 /**
  * rocky c++
- * Copyright 2023 Pelican Mapping
+ * Copyright 2026 Pelican Mapping
  * MIT License
  */
 
 #include "PipelineState.h"
+#include "MapNode.h"
 
 using namespace ROCKY_NAMESPACE;
+
+
+void
+RockyViewDependentState::init(vsg::ResourceRequirements& req)
+{
+    Inherit::init(req);
+
+    // add our own descriptors to descriptorSet
+    _myDescriptors.data = vsg::ubyteArray::create(sizeof(MyDescriptors::Uniforms));
+    _myDescriptors.data->properties.dataVariance = vsg::DYNAMIC_DATA;
+    _myDescriptors.ubo = vsg::DescriptorBuffer::create(_myDescriptors.data, VSG_VIEW_DEPENDENT_ROCKY_BINDING);
+
+    // initialize to the defaults
+    auto& uniforms = *static_cast<MyDescriptors::Uniforms*>(_myDescriptors.data->dataPointer());
+    uniforms = MyDescriptors::Uniforms();
+
+    // add it! It will automatically compile along with the others.
+    this->descriptorSet->descriptors.emplace_back(_myDescriptors.ubo);
+
+    // add its shader-stage binding to the layout.
+    this->descriptorSetLayout->addBinding(VSG_VIEW_DEPENDENT_ROCKY_BINDING,
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_ALL);
+}
+
+
+void
+RockyViewDependentState::traverse(vsg::RecordTraversal& rt) const
+{
+    // todo: update custom descriptors
+    auto& uniforms = *static_cast<MyDescriptors::Uniforms*>(_myDescriptors.data->dataPointer());
+    uniforms.inverseViewMatrix = vsg::inverse(view->camera->viewMatrix->transform());
+
+    // ellipsoid params (TODO: don't need to update these constantly!)
+    if (!_mapNode)
+        _mapNode = detail::find<MapNode>(view);
+
+    if (auto mapNode = _mapNode.ref_ptr())
+    {
+        uniforms.ellipsoidAxes.x = mapNode->srs().ellipsoid().semiMajorAxis();
+        uniforms.ellipsoidAxes.y = mapNode->srs().ellipsoid().semiMinorAxis();
+    }
+
+    _myDescriptors.data->dirty();
+
+    Inherit::traverse(rt);
+}
+
 
 StreamingGPUBuffer::StreamingGPUBuffer(std::uint32_t binding, VkDeviceSize size, VkBufferUsageFlags in_usage, VkSharingMode in_sharingMode) :
     usage_flags(in_usage),
