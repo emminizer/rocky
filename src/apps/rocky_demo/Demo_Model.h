@@ -18,7 +18,7 @@ auto Demo_Model = [](Application& app)
     {
         auto [_, reg] = app.registry.write();
 
-#if 0
+#if 1
         // Create a simple VSG model using the Builder.
         vsg::Builder builder;
         vsg::GeometryInfo gi;

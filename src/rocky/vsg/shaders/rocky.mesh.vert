@@ -28,13 +28,13 @@ struct MeshStyle {
 
 layout(set = 0, binding = 1) uniform MeshUniform {
     MeshStyle style;
-} mesh;
+} u_mesh;
 
 layout(location = 1) out Varyings {
     vec4 color;
     vec2 uv;
     vec3 normal;
-    vec3 vertex_vs;
+    vec3 vertexVs;
     float applyTexture;
     float applyLighting;
     flat uint stipplePattern;
@@ -52,26 +52,26 @@ out gl_PerVertex {
 
 void main()
 {    
-    bool hasPerVertexColors = (MASK_HAS_PER_VERTEX_COLORS & mesh.style.featureMask) != 0;
-    bool hasTexture = (MASK_HAS_TEXTURE & mesh.style.featureMask) != 0;
-    bool hasLighting = (MASK_HAS_LIGHTING & mesh.style.featureMask) != 0;
+    bool hasPerVertexColors = (MASK_HAS_PER_VERTEX_COLORS & u_mesh.style.featureMask) != 0;
+    bool hasTexture = (MASK_HAS_TEXTURE & u_mesh.style.featureMask) != 0;
+    bool hasLighting = (MASK_HAS_LIGHTING & u_mesh.style.featureMask) != 0;
 
-    vary.color = hasPerVertexColors ? in_color : mesh.style.color;
+    vary.color = hasPerVertexColors ? in_color : u_mesh.style.color;
     vary.applyTexture = hasTexture ? 1.0 : 0.0;
     vary.applyLighting = hasLighting ? 1.0 : 0.0;
-    vary.stipplePattern = mesh.style.stipplePattern;
+    vary.stipplePattern = u_mesh.style.stipplePattern;
 
-    vec4 vertex_vs = pc.modelview * vec4(in_vertex, 1.0);
+    vec4 vertexVs = pc.modelview * vec4(in_vertex, 1.0);
     
-    vertex_vs = apply_projection(vertex_vs);
+    vertexVs = applyProjection(vertexVs);
 
     mat3 normalMatrix = mat3(transpose(inverse(pc.modelview)));
     vary.normal = normalMatrix * in_normal;
     
-    vertex_vs = apply_depth_offset(vertex_vs, mesh.style.depthOffset);
+    vertexVs = applyDepthOffset(vertexVs, u_mesh.style.depthOffset);
 
-    vary.vertex_vs = vertex_vs.xyz / vertex_vs.w;
+    vary.vertexVs = vertexVs.xyz / vertexVs.w;
     vary.uv = in_uv;
 
-    gl_Position = pc.projection * vertex_vs;
+    gl_Position = pc.projection * vertexVs;
 }

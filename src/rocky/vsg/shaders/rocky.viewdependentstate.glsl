@@ -9,4 +9,4 @@ layout(set = 1, binding = ROCKY_BINDING_VIEW_DEPENDENT_STATE) uniform RockyVDS {
     vec2 ellipsoidAxes;
     uint stereographic;
     float _padding[1];
-} vds;
+} u_vds;

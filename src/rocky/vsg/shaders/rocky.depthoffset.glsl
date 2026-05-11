@@ -2,7 +2,7 @@
 
 // Moves the vertex closer to the camera by the specified bias,
 // clamping it beyond the near clip plane if necessary.
-vec4 apply_depth_offset(in vec4 vertex, in float offset)
+vec4 applyDepthOffset(in vec4 vertex, in float offset)
 {
     vertex.xyz /= vertex.w;
     float n = pc.projection[3][3] == 0 ?

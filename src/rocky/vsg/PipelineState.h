@@ -26,7 +26,7 @@ namespace ROCKY_NAMESPACE
     *       vec2 ellipsoidAxes;
     *       float stereographic;
     *       float _padding[1];
-    *   } vds;
+    *   } u_vds;
     *
     */
     class ROCKY_EXPORT RockyViewDependentState : public vsg::Inherit<vsg::ViewDependentState, RockyViewDependentState>

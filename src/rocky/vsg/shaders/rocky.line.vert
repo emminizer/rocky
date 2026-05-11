@@ -8,8 +8,8 @@ layout(push_constant) uniform PushConstants {
 
 // input vertex attributes
 layout(location = 0) in vec3 in_vertex;
-layout(location = 1) in vec3 in_vertex_prev;
-layout(location = 2) in vec3 in_vertex_next;
+layout(location = 1) in vec3 in_vertexPrev;
+layout(location = 2) in vec3 in_vertexNext;
 layout(location = 3) in vec4 in_color;
 
 // rocky::detail::LineStyleRecord
@@ -27,7 +27,7 @@ struct LineStyle {
 // rocky::detail::LineStyleUniform
 layout(set = 0, binding = 1) uniform LineStyleUniform {
     LineStyle style;
-} line;
+} u_line;
 
 // vsg viewport data
 layout(set = 1, binding = 1) readonly buffer VSG_Viewports {
@@ -56,13 +56,13 @@ out gl_PerVertex {
 
 void main()
 {
-    bool perVertexColor = (line.style.perVertexMask & 0x1) != 0;
+    bool perVertexColor = (u_line.style.perVertexMask & 0x1) != 0;
 
-    vary.color = perVertexColor ? in_color : line.style.color;
-    vary.stipplePattern = line.style.stipplePattern;
-    vary.stippleFactor = line.style.stippleFactor;
+    vary.color = perVertexColor ? in_color : u_line.style.color;
+    vary.stipplePattern = u_line.style.stipplePattern;
+    vary.stippleFactor = u_line.style.stippleFactor;
 
-    float thickness = max(0.5, floor(line.style.width * line.style.devicePixelRatio));
+    float thickness = max(0.5, floor(u_line.style.width * u_line.style.devicePixelRatio));
     float len = thickness;
     int code = (gl_VertexIndex + 2) & 3;
     bool is_start = code <= 1;
@@ -71,9 +71,9 @@ void main()
 
 #if 0
     // Enforce the start/end limits on the line:
-    if (line.first >= 0 && line.last >= 0)
+    if (u_line.first >= 0 && u_line.last >= 0)
     {
-        if (gl_VertexIndex < line.first || (line.last > 0 && gl_VertexIndex > line.last))
+        if (gl_VertexIndex < u_line.first || (u_line.last > 0 && gl_VertexIndex > u_line.last))
         {
             // no draw
             lateral = 0.0;
@@ -84,21 +84,21 @@ void main()
 
     vec2 viewport_size = vsg_viewports.viewport[0].zw;
 
-    float bias = line.style.depthOffset;
+    float bias = u_line.style.depthOffset;
 
     vec4 curr_view = pc.modelview * vec4(in_vertex, 1);
-    curr_view      = apply_projection(curr_view);
-    curr_view      = apply_depth_offset(curr_view, bias);
+    curr_view      = applyProjection(curr_view);
+    curr_view      = applyDepthOffset(curr_view, bias);
     vec4 curr_clip = pc.projection * curr_view;
 
-    vec4 prev_view = pc.modelview * vec4(in_vertex_prev, 1);
-    prev_view      = apply_projection(prev_view);
-    prev_view      = apply_depth_offset(prev_view, bias);
+    vec4 prev_view = pc.modelview * vec4(in_vertexPrev, 1);
+    prev_view      = applyProjection(prev_view);
+    prev_view      = applyDepthOffset(prev_view, bias);
     vec4 prev_clip = pc.projection * prev_view;
 
-    vec4 next_view = pc.modelview * vec4(in_vertex_next, 1);
-    next_view      = apply_projection(next_view);
-    next_view      = apply_depth_offset(next_view, bias);
+    vec4 next_view = pc.modelview * vec4(in_vertexNext, 1);
+    next_view      = applyProjection(next_view);
+    next_view      = applyDepthOffset(next_view, bias);
     vec4 next_clip = pc.projection * next_view;
 
     vec2 curr_pixel = (curr_clip.xy / curr_clip.w) * viewport_size;
@@ -109,17 +109,17 @@ void main()
 
     // The following vertex comparisons must be done in model 
     // space because the equivalency gets mashed after projection.
-    const float epsilon = 1e-7;
+    const float EPSILON = 1e-7;
 
     // starting point uses (next - current)
-    if (distance(in_vertex, in_vertex_prev) < epsilon)
+    if (distance(in_vertex, in_vertexPrev) < EPSILON)
     {
         dir = normalize(next_pixel - curr_pixel);
         vary.stippleDir = dir;
     }
 
     // ending point uses (current - previous)
-    else if (distance(in_vertex, in_vertex_next) < epsilon)
+    else if (distance(in_vertex, in_vertexNext) < EPSILON)
     {
         dir = normalize(curr_pixel - prev_pixel);
         vary.stippleDir = dir;
@@ -143,8 +143,8 @@ void main()
             len = thickness / dot(miter, perp);
 
             // limit the length of a mitered corner, to prevent unsightly spikes
-            const float limit = 2.0;
-            if (len > thickness * limit)
+            const float LIMIT = 2.0;
+            if (len > thickness * LIMIT)
             {
                 len = thickness;
                 dir = is_start ? dir_out : dir_in;
@@ -164,22 +164,22 @@ void main()
     vec2 offset = extrude_unit * lateral;
     curr_clip.xy += (offset * curr_clip.w);
 
-    if (line.style.stipplePattern != 0xffff)
+    if (u_line.style.stipplePattern != 0xffff)
     {
-        const float quantize = 8.0;
+        const float QUANTIZE = 8.0;
 
         // Calculate the (quantized) rotation angle that will project the
         // fragment coord onto the X-axis for stipple pattern sampling.
         // Note: this relies on the GLSL "provoking vertex" being at the 
         // beginning of the line segment!
 
-        const float r2d = 57.29577951;
-        const float d2r = 1.0 / r2d;
-        int a = int(r2d * (atan(vary.stippleDir.y, vary.stippleDir.x)) + 180.0);
-        int q = int(360.0 / quantize);
+        const float R2D = 57.29577951;
+        const float D2R = 1.0 / R2D;
+        int a = int(R2D * (atan(vary.stippleDir.y, vary.stippleDir.x)) + 180.0);
+        int q = int(360.0 / QUANTIZE);
         int r = a % q;
         int qa = (r > q / 2) ? a + q - r : a - r;
-        float qangle = d2r * (float(qa) - 180.0);
+        float qangle = D2R * (float(qa) - 180.0);
         vary.stippleDir = vec2(cos(qangle), sin(qangle));
     }
 

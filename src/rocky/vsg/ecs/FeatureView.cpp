@@ -128,7 +128,7 @@ namespace
                 {
                     tessellate_line_segment(input[i - 1], input[i], input_srs, interp, max_span, output, false);
                 }
-                output.push_back(input.back());
+                //output.push_back(input.back());
             }
             else
             {
@@ -196,13 +196,13 @@ namespace
                 {
                     std::size_t num_points_in_segments = tessellated.size() * 2 - 2;
                     auto ptr = lineGeom.points.size();
-                    lineGeom.points.resize(lineGeom.points.size() + num_points_in_segments);
+                    lineGeom.points.reserve(lineGeom.points.size() + num_points_in_segments);
 
                     // convert from a strip to segments
                     for (std::size_t i = 0; i < tessellated.size() - 1; ++i)
                     {
-                        lineGeom.points[ptr++] = glm::dvec3(tessellated[i].x, tessellated[i].y, tessellated[i].z);
-                        lineGeom.points[ptr++] = glm::dvec3(tessellated[i + 1].x, tessellated[i + 1].y, tessellated[i + 1].z);
+                        lineGeom.points.emplace_back(tessellated[i]);
+                        lineGeom.points.emplace_back(tessellated[i + 1]);
                     }
                 }
 

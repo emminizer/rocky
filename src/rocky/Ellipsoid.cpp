@@ -305,30 +305,50 @@ Ellipsoid::geocentricInterpolate(const glm::dvec3& geoc1, const glm::dvec3& geoc
     auto w1 = geoc1 * _ellipsoidToUnitSphere;
     auto w2 = geoc2 * _ellipsoidToUnitSphere;
 
-    // Geometric slerp in unit sphere space
+    double r1 = glm::length(w1);
+    double r2 = glm::length(w2);
+
+    if (r1 == 0.0 || r2 == 0.0)
+    {
+        return glm::mix(geoc1, geoc2, t);
+    }
+
+    w1 /= r1;
+    w2 /= r2;
+
+    // Geometric slerp in unit sphere space.
     // https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
-    double dp = glm::dot(w1, w2);
-    if (dp == 1.0)
+    double dp = std::max(-1.0, std::min(1.0, glm::dot(w1, w2)));
+
+    glm::dvec3 n;
+
+    if (dp > 1.0 - 1e-12)
     {
-        return geoc1;
+        n = glm::normalize(glm::mix(w1, w2, t));
+    }
+    else if (dp < -1.0 + 1e-12)
+    {
+        glm::dvec3 ortho = glm::cross(w1, glm::dvec3(1.0, 0.0, 0.0));
+        if (glm::dot(ortho, ortho) < 1e-12)
+        {
+            ortho = glm::cross(w1, glm::dvec3(0.0, 1.0, 0.0));
+        }
+
+        ortho = glm::normalize(ortho);
+        n = w1 * cos(M_PI * t) + ortho * sin(M_PI * t);
+    }
+    else
+    {
+        double angle = acos(dp);
+        double s = sin(angle);
+
+        double c1 = sin((1.0 - t) * angle) / s;
+        double c2 = sin(t * angle) / s;
+
+        n = w1 * c1 + w2 * c2;
     }
 
-    double angle = acos(dp);
-
-    double s = sin(angle);
-    if (s == 0.0)
-    {
-        return geoc1;
-    }
-
-    //double c1 = sin((1.0 - t) * angle) / s;
-    double c2 = sin(t * angle) / s;
-
-    //glm::dvec3 n = w1 * c1 + w2 * c2;
-
-    auto n = glm::mix(w1, w2, c2);
-
-    return n * _unitSphereToEllipsoid;
+    return (n * glm::mix(r1, r2, t)) * _unitSphereToEllipsoid;
 }
 
 glm::dvec3

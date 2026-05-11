@@ -61,10 +61,10 @@ namespace
         shaderSet->addAttributeBinding("in_color",       "", 2, VK_FORMAT_R32G32B32A32_SFLOAT, {});
         shaderSet->addAttributeBinding("in_uv",          "", 3, VK_FORMAT_R32G32_SFLOAT, {});
 
-        shaderSet->addDescriptorBinding("mesh", "", MESH_SET, MESH_BINDING_UNIFORM,
+        shaderSet->addDescriptorBinding("u_mesh", "", MESH_SET, MESH_BINDING_UNIFORM,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, {});
 
-        shaderSet->addDescriptorBinding("meshTexture", "", MESH_SET, MESH_BINDING_TEXTURE,
+        shaderSet->addDescriptorBinding("u_meshTexture", "", MESH_SET, MESH_BINDING_TEXTURE,
             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
         // We need VSG's view-dependent data for lighting support
@@ -83,7 +83,7 @@ namespace
         styleDetail.styleUBOData = vsg::ubyteArray::create(sizeof(MeshUniform));
         styleDetail.styleUBO = vsg::DescriptorBuffer::create(styleDetail.styleUBOData, MESH_BINDING_UNIFORM, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-        // uniform: "meshTexture" in the fragment shader
+        // uniform: "u_meshTexture" in the fragment shader
         styleDetail.styleTexture = vsg::DescriptorImage::create(createEmptyTexture(), MESH_BINDING_TEXTURE, 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
         // bind command:

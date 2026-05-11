@@ -50,7 +50,7 @@ namespace
         shaderSet->addAttributeBinding("in_color", "", 1, VK_FORMAT_R32G32B32A32_SFLOAT, {});
         shaderSet->addAttributeBinding("in_width", "", 2, VK_FORMAT_R32_SFLOAT, {});
 
-        shaderSet->addDescriptorBinding("point", "", LAYOUT_SET, LAYOUT_BINDING_UNIFORM,
+        shaderSet->addDescriptorBinding("u_point", "", LAYOUT_SET, LAYOUT_BINDING_UNIFORM,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT, {});
 
         // We need VSG's view-dependent data:
@@ -208,7 +208,7 @@ PointSystemNode::initialize(VSGContext vsgcontext)
         c.config->enableArray("in_width", VK_VERTEX_INPUT_RATE_VERTEX, 4);
 
         // Uniforms we will need:
-        c.config->enableDescriptor("point");
+        c.config->enableDescriptor("u_point");
 
         // always both
         PipelineUtils::enableViewDependentState(c.config);

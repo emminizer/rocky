@@ -50,6 +50,7 @@ namespace ROCKY_NAMESPACE
         std::shared_ptr<Cache<TileKey, Result<GeoImage>>> cache;
 
     public:
+        ElevationSampler();
 
         //! Is this sampler OK to use?
         inline bool ok() const {

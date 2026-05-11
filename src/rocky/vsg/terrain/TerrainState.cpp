@@ -23,23 +23,23 @@
 #define MAP_SETTINGS_UBO_NAME "map"
 #define MAP_SETTINGS_UBO_BINDING 8
 
-#define TERRAIN_SETTINGS_UBO_NAME "terrain"
+#define TERRAIN_SETTINGS_UBO_NAME "u_terrain"
 #define TERRAIN_SETTINGS_UBO_BINDING 9
 
-#define ELEVATION_TEX_NAME "elevation_tex"
+#define ELEVATION_TEX_NAME "u_elevationTex"
 #define ELEVATION_TEX_BINDING 10
 
-#define COLOR_TEX_NAME "color_tex"
+#define COLOR_TEX_NAME "u_colorTex"
 #define COLOR_TEX_BINDING 11
 
 #define NORMAL_TEX_NAME "normal_tex"
 #define NORMAL_TEX_BINDING 12
 
-#define TILE_UBO_NAME "tile"
+#define TILE_UBO_NAME "u_tile"
 #define TILE_UBO_BINDING 13
 
-#define ATTR_VERTEX "in_vertex"
-#define ATTR_NORMAL "in_normal"
+#define ATTR_VERTEX "in_vertexTs"
+#define ATTR_NORMAL "in_upTs"
 #define ATTR_UV "in_uvw"
 #define ATTR_VERTEX_NEIGHBOR "in_vertex_neighbor"
 #define ATTR_NORMAL_NEIGHBOR "in_normal_neighbor"

@@ -4,7 +4,7 @@ layout(location = 1) in Varyings {
     vec4 color;
     vec2 uv;
     vec3 normal;
-    vec3 vertex_vs;
+    vec3 vertexVs;
     float applyTexture;
     float applyLighting;
     flat uint stipplePattern;
@@ -13,8 +13,8 @@ layout(location = 1) in Varyings {
 // outputs
 layout(location = 0) out vec4 outColor;
 
-// textures
-layout(set = 0, binding = 2) uniform sampler2D meshTexture;
+// u_textures
+layout(set = 0, binding = 2) uniform sampler2D u_meshTexture;
 
 // lighting
 #include "rocky.lighting.glsl"
@@ -31,9 +31,9 @@ void main()
 {
     outColor = vary.color;
 
-    outColor = mix(outColor, outColor * texture(meshTexture, vary.uv), vary.applyTexture);
+    outColor = mix(outColor, outColor * texture(u_meshTexture, vary.uv), vary.applyTexture);
 
-    vec4 litColor = apply_lighting(outColor, vary.vertex_vs, vary.normal);
+    vec4 litColor = applyLighting(outColor, vary.vertexVs, vary.normal);
     outColor = mix(outColor, litColor, vary.applyLighting);
 
     if (!stipple(ivec2(gl_FragCoord.xy)))

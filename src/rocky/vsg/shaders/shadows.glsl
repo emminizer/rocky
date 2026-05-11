@@ -1,11 +1,11 @@
-layout(set = VIEW_DESCRIPTOR_SET, binding = 2) uniform texture2DArray shadowMaps;
+layout(set = VIEW_DESCRIPTOR_SET, binding = 2) uniform texture2DArray u_shadowMaps;
 #ifdef VSG_SHADOWS_PCSS
-layout(set = VIEW_DESCRIPTOR_SET, binding = 3) uniform sampler shadowMapDirectSampler;
+layout(set = VIEW_DESCRIPTOR_SET, binding = 3) uniform sampler u_shadowMapDirectSampler;
 #endif
-layout(set = VIEW_DESCRIPTOR_SET, binding = 4) uniform sampler shadowMapShadowSampler;
+layout(set = VIEW_DESCRIPTOR_SET, binding = 4) uniform sampler u_shadowMapShadowSampler;
 
 #if defined(VSG_SHADOWS_PCSS) || defined(VSG_SHADOWS_SOFT)
-layout(constant_id = 0) const int shadowSamples = 16;
+layout(constant_id = 0) const int SHADOW_SAMPLES = 16;
 
 const int POISSON_DISK_SAMPLE_COUNT = 64;
 const vec2 POISSON_DISK[POISSON_DISK_SAMPLE_COUNT] = {
@@ -77,9 +77,9 @@ const vec2 POISSON_DISK[POISSON_DISK_SAMPLE_COUNT] = {
 
 // Interleaved Gradient Noise
 // https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
-float quick_hash(vec2 pos) {
-    const vec3 magic = vec3(0.06711056f, 0.00583715f, 52.9829189f);
-    return fract(magic.z * fract(dot(pos, magic.xy)));
+float quickHash(vec2 pos) {
+    const vec3 MAGIC = vec3(0.06711056f, 0.00583715f, 52.9829189f);
+    return fract(MAGIC.z * fract(dot(pos, MAGIC.xy)));
 }
 #endif
 
@@ -98,7 +98,7 @@ float quick_hash(vec2 pos) {
 
 float calculateShadowCoverageForDirectionalLight(int lightDataIndex, int shadowMapIndex, vec3 T, vec3 B, inout vec3 color)
 {
-    vec4 shadowMapSettings = lightData.values[lightDataIndex];
+    vec4 shadowMapSettings = u_lightData.values[lightDataIndex];
     int shadowMapCount = int(shadowMapSettings.r);
     if (shadowMapCount > 0)
     {
@@ -136,7 +136,7 @@ float calculateShadowCoverageForDirectionalLight(int lightDataIndex, int shadowM
 
 float calculateShadowCoverageForSpotLight(int lightDataIndex, int shadowMapIndex, vec3 T, vec3 B, float lightDist, inout vec3 color)
 {
-    vec4 shadowMapSettings = lightData.values[lightDataIndex];
+    vec4 shadowMapSettings = u_lightData.values[lightDataIndex];
     int shadowMapCount = int(shadowMapSettings.r);
     if (shadowMapCount > 0)
     {

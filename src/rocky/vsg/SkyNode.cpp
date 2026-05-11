@@ -140,7 +140,7 @@ namespace
         shaderSet->addAttributeBinding("in_vertex", "", 0, VK_FORMAT_R32G32B32_SFLOAT, vsg::vec3Array::create(1));
 
         // Atmosphere UBO at set 0, binding 0
-        shaderSet->addDescriptorBinding("atmo", "", 0, ATMO_UBO_BINDING,
+        shaderSet->addDescriptorBinding("u_atmo", "", 0, ATMO_UBO_BINDING,
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, {});
 
@@ -171,7 +171,7 @@ namespace
         pipelineConfig->enableArray("in_vertex", VK_VERTEX_INPUT_RATE_VERTEX, 12);
 
         // Enable atmosphere UBO and view-dependent data
-        pipelineConfig->enableDescriptor("atmo");
+        pipelineConfig->enableDescriptor("u_atmo");
         PipelineUtils::enableViewDependentState(pipelineConfig);
 
         struct SetPipelineStates : public vsg::Visitor

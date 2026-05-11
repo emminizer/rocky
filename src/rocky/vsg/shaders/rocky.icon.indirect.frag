@@ -2,28 +2,28 @@
 
 // Texture arena (fixed size)
 //layout(set = 0, binding = 3) uniform sampler samp;
-layout(set = 0, binding = 4) uniform sampler2D textures[1];
+layout(set = 0, binding = 4) uniform sampler2D u_textures[1];
 
 // input varyings
 layout(location = 0) in vec2 uv;
-layout(location = 1) flat in int texture_index;
+layout(location = 1) flat in int textureIndex;
 
 // outputs
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec4 outColor;
 
 void main()
 {
-    const vec4 error_color = vec4(1,0,0,1);
+    const vec4 ERROR_COLOR = vec4(1,0,0,1);
 
-    if (texture_index < 0)
+    if (textureIndex < 0)
     {
-        out_color = error_color;
+        outColor = ERROR_COLOR;
     }
     else
     {
-        out_color = texture(textures[texture_index], uv);
+        outColor = texture(u_textures[textureIndex], uv);
     }
 
-    if (out_color.a < 0.15)
+    if (outColor.a < 0.15)
         discard;
 }

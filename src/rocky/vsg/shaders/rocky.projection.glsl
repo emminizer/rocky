@@ -1,25 +1,25 @@
 
 // the camera position in model space (or tile tangent space)
-vec3 get_camera_ms()
+vec3 getCameraMs()
 {
     return -transpose(mat3(pc.modelview)) * pc.modelview[3].xyz;
 }
 
 // get a matrix that will rotate a view-space vector into world-space
-mat3 get_rotate_vs_to_ws(in mat3 modelMatrix)
+mat3 getRotateVsToWs(in mat3 modelMatrix)
 {
     return modelMatrix * transpose(mat3(pc.modelview));
 }
 
 // get a matrix that will rotate a view-space vector into world-space
-mat3 get_rotate_vs_to_ws()
+mat3 getRotateVsToWs()
 {
-    return mat3(vds.inverseViewMatrix * pc.modelview) * transpose(mat3(pc.modelview));
+    return mat3(u_vds.inverseViewMatrix * pc.modelview) * transpose(mat3(pc.modelview));
 }
 
 // get the parametric distance along ta ray at which it intersects an ellipsoid
 // (t, such that isect = origin + t * dir)
-float ray_ellipsoid_intersect(in vec3 origin, in vec3 dir, in vec2 axes)
+float rayEllipsoidIntersect(in vec3 origin, in vec3 dir, in vec2 axes)
 {
     vec3 invAxes2 = 1.0 / vec3(axes.x * axes.x, axes.x * axes.x, axes.y * axes.y);
     float a = dot(dir * dir, invAxes2);
@@ -39,7 +39,7 @@ float ray_ellipsoid_intersect(in vec3 origin, in vec3 dir, in vec2 axes)
 }
 
 // unit normal vector to the ellipsoid at a point
-vec3 ellipsoid_normal(in vec3 point, in vec2 axes)
+vec3 ellipsoidNormal(in vec3 point, in vec2 axes)
 {
     return normalize(vec3(
         point.x / (axes.x * axes.x),
@@ -47,7 +47,7 @@ vec3 ellipsoid_normal(in vec3 point, in vec2 axes)
         point.z / (axes.y * axes.y)));
 }
 
-vec3 project_to_spherical_gnomonic(in vec3 position_vs, in float R, in mat4 viewMatrix)
+vec3 projectToSphericalGnomonic(in vec3 position_vs, in float R, in mat4 viewMatrix)
 {
     vec3 sphereCenter_vs = (viewMatrix * vec4(0, 0, 0, 1)).xyz;
     vec3 look_vs = vec3(0, 0, -1);
@@ -85,7 +85,7 @@ vec3 project_to_spherical_gnomonic(in vec3 position_vs, in float R, in mat4 view
     return sphereCenter_vs + dir_vs * scale + height * planeNormal_vs;
 }
 
-vec3 project_vertex_to_stereographic(in vec3 position_vs, in vec2 ellipsoid, in mat4 viewMatrix)
+vec3 projectVertexToStereographic(in vec3 position_vs, in vec2 ellipsoid, in mat4 viewMatrix)
 {
     vec3 sphereCenter_vs = (viewMatrix * vec4(0, 0, 0, 1)).xyz;
     vec3 look_vs = vec3(0, 0, -1);
@@ -128,20 +128,20 @@ vec3 project_vertex_to_stereographic(in vec3 position_vs, in vec2 ellipsoid, in 
     return antipode_vs + dir_vs * scale + height * planeNormal_vs;
 }
 
-vec3 project_anchored_vertex_to_stereographic(in vec3 position_vs, in vec2 ellipsoid, in mat4 viewMatrix)
+vec3 projectAnchoredVertexToStereographic(in vec3 position_vs, in vec2 ellipsoid, in mat4 viewMatrix)
 {
     vec3 anchor_vs = pc.modelview[3].xyz;
     vec3 offset_vs = position_vs - anchor_vs;
-    vec3 projected_anchor_vs = project_vertex_to_stereographic(anchor_vs, ellipsoid, viewMatrix);
+    vec3 projected_anchor_vs = projectVertexToStereographic(anchor_vs, ellipsoid, viewMatrix);
     return projected_anchor_vs + offset_vs;
 }
 
-vec4 apply_projection(in vec4 position_vs)
+vec4 applyProjection(in vec4 position_vs)
 {
-    if (vds.stereographic > 0 && pc.projection[3][3] > 0.0)
+    if (u_vds.stereographic > 0 && pc.projection[3][3] > 0.0)
     {
-        mat4 viewMatrix = inverse(vds.inverseViewMatrix);
-        position_vs.xyz = project_vertex_to_stereographic(position_vs.xyz, vds.ellipsoidAxes, viewMatrix);
+        mat4 viewMatrix = inverse(u_vds.inverseViewMatrix);
+        position_vs.xyz = projectVertexToStereographic(position_vs.xyz, u_vds.ellipsoidAxes, viewMatrix);
     }
     return position_vs;
 }
