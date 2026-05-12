@@ -128,7 +128,7 @@ auto Demo_LabelFeatures = [](Application& app)
             }
 #endif
 
-            if (ImGuiLTable::SliderFloat("Outline size", &style.outlineSize, 0, 5, "%.0f"))
+            if (ImGuiLTable::SliderFloat("Outline size", &style.textOutlineSize, 0, 5, "%.0f"))
             {
                 app.vsgcontext->requestFrame();
             }

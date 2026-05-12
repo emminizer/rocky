@@ -6,6 +6,9 @@
  */
 #include "LabelSystem.h"
 
+#include <algorithm>
+#include <cfloat>
+
 #if IMGUI_VERSION_NUM >= 19200 && defined(_WIN32)
 #define USE_DYNAMIC_FONTS
 #endif
@@ -48,8 +51,6 @@ LabelSystem::LabelSystem(Registry& registry) :
             ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(style.borderColor[0], style.borderColor[1], style.borderColor[2], style.borderColor[3]));
             ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(style.backgroundColor[0], style.backgroundColor[1], style.backgroundColor[2], style.backgroundColor[3]));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(style.textColor[0], style.textColor[1], style.textColor[2], style.textColor[3]));
-            ImGui::SetNextWindowPos(ImVec2{ i.position.x + style.offset.x, i.position.y + style.offset.y }, ImGuiCond_Always, ImVec2{ style.pivot.x, style.pivot.y });
-            ImGui::Begin(i.uid.c_str(), nullptr, i.windowFlags);
 
 #ifdef USE_DYNAMIC_FONTS
             // Load the font if necessary
@@ -61,10 +62,122 @@ LabelSystem::LabelSystem(Registry& registry) :
 
             ImGui::PushFont(font, style.textSize);
 #endif
-            ImGuiEx::TextOutlined(
-                ImVec4(style.outlineColor[0], style.outlineColor[1], style.outlineColor[2], style.outlineColor[3]),
-                style.outlineSize,
-                label.text.c_str());
+
+            // Layout is in screen coordinates, with "anchor" being the point that
+            // must remain fixed. When there is an icon, anchor is its iconPivot.
+            const ImVec2 anchor{ i.position.x, i.position.y };
+            const ImVec2 padding{ style.padding.x, style.padding.y };
+
+            const bool hasText = !label.text.empty();
+            const bool hasIcon = styleDetail.iconImage && style.iconSizePixels > 0.0f;
+
+            ImVec2 textDrawPos = anchor;
+            ImVec2 iconDrawPos = anchor;
+            ImVec2 rectMin{ FLT_MAX, FLT_MAX };
+            ImVec2 rectMax{ -FLT_MAX, -FLT_MAX };
+
+            auto expand = [&](const ImVec2& p)
+                {
+                    rectMin.x = std::min(rectMin.x, p.x);
+                    rectMin.y = std::min(rectMin.y, p.y);
+                    rectMax.x = std::max(rectMax.x, p.x);
+                    rectMax.y = std::max(rectMax.y, p.y);
+                };
+
+            if (hasIcon)
+            {
+                const float size = style.iconSizePixels;
+                const float cos_a = cosf(glm::radians(style.iconRotationDegrees));
+                const float sin_a = sinf(glm::radians(style.iconRotationDegrees));
+                const ImVec2 half{ size * 0.5f, size * 0.5f };
+                const ImVec2 pivot{
+                    size * style.iconPivot.x,
+                    size * style.iconPivot.y };
+                const ImVec2 pivotFromCenter{
+                    pivot.x - half.x,
+                    pivot.y - half.y };
+                const ImVec2 rotatedPivotFromCenter{
+                    pivotFromCenter.x * cos_a - pivotFromCenter.y * sin_a,
+                    pivotFromCenter.x * sin_a + pivotFromCenter.y * cos_a };
+                const ImVec2 center{
+                    anchor.x - rotatedPivotFromCenter.x,
+                    anchor.y - rotatedPivotFromCenter.y };
+
+                iconDrawPos = ImVec2{
+                    center.x - half.x,
+                    center.y - half.y };
+
+                const ImVec2 corners[4] = {
+                    ImVec2(-half.x, -half.y),
+                    ImVec2(half.x, -half.y),
+                    ImVec2(half.x, half.y),
+                    ImVec2(-half.x, half.y)
+                };
+
+                for (auto& corner : corners)
+                {
+                    expand(ImVec2{
+                        center.x + corner.x * cos_a - corner.y * sin_a,
+                        center.y + corner.x * sin_a + corner.y * cos_a });
+                }
+            }
+
+            if (hasText)
+            {
+                ImFont* imguiFont = ImGui::GetFont();
+                const float fontSize = ImGui::GetFontSize();
+                const ImVec2 textSize = imguiFont->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, label.text.c_str());
+                const float outlineSize = std::max(0.0f, style.textOutlineSize);
+                const ImVec2 labelSize{
+                    textSize.x + 2.0f * outlineSize,
+                    textSize.y + 2.0f * outlineSize };
+                const ImVec2 labelPivotPos{
+                    anchor.x + static_cast<float>(style.textOffset.x),
+                    anchor.y + static_cast<float>(style.textOffset.y) };
+                const ImVec2 labelMin{
+                    labelPivotPos.x - labelSize.x * style.textPivot.x,
+                    labelPivotPos.y - labelSize.y * style.textPivot.y };
+
+                textDrawPos = ImVec2{
+                    labelMin.x + outlineSize,
+                    labelMin.y + outlineSize };
+
+                expand(labelMin);
+                expand(ImVec2{ labelMin.x + labelSize.x, labelMin.y + labelSize.y });
+            }
+
+            if (!hasText && !hasIcon)
+            {
+                expand(anchor);
+                expand(anchor);
+            }
+
+            const ImVec2 windowPos{
+                rectMin.x - padding.x,
+                rectMin.y - padding.y };
+            const ImVec2 windowSize{
+                std::max(1.0f, rectMax.x - rectMin.x + 2.0f * padding.x),
+                std::max(1.0f, rectMax.y - rectMin.y + 2.0f * padding.y) };
+
+            ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+            ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+            auto windowFlags = i.windowFlags & ~ImGuiWindowFlags_AlwaysAutoResize;
+            ImGui::Begin(i.uid.c_str(), nullptr, windowFlags);
+
+            if (hasIcon)
+            {
+                ImGui::SetCursorScreenPos(iconDrawPos);
+                styleDetail.iconImage.render(ImVec2{ style.iconSizePixels, style.iconSizePixels }, style.iconRotationDegrees);
+            }
+
+            if (hasText)
+            {
+                ImGui::SetCursorScreenPos(textDrawPos);
+                ImGuiEx::TextOutlined(
+                    ImVec4(style.textOutlineColor[0], style.textOutlineColor[1], style.textOutlineColor[2], style.textOutlineColor[3]),
+                    style.textOutlineSize,
+                    label.text.c_str());
+            }
 
 #ifdef USE_DYNAMIC_FONTS
             ImGui::PopFont();
@@ -82,7 +195,7 @@ LabelSystem::LabelSystem(Registry& registry) :
             if (false)
             {
                 ImVec2 a{ i.position.x, i.position.y };
-                ImVec2 b{ i.position.x + style.offset.x, i.position.y + style.offset.y };
+                ImVec2 b{ i.position.x + style.textOffset.x, i.position.y + style.textOffset.y };
                 ImVec2 UL = { 0.0, 0.0 };
 
                 ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -119,16 +232,26 @@ LabelSystem::update(VSGContext vsg)
         {
             Label::eachDirty(reg, [&](entt::entity e)
                 {
+                    // nop
                 });
 
             LabelStyle::eachDirty(reg, [&](entt::entity e)
                 {
-                    auto& style = reg.get<LabelStyle>(e);
-                    auto& styleDetail = reg.get<detail::LabelStyleDetail>(e);
+                    auto&& [style, styleDetail] = reg.get<LabelStyle, detail::LabelStyleDetail>(e);
+
                     if (styleDetail.fontName != style.fontName)
                     {
                         styleDetail.fonts.fill(nullptr);
                         styleDetail.fontName = style.fontName;
+                    }
+
+                    if (style.icon && !styleDetail.iconImage)
+                    {
+                        styleDetail.iconImage = ImGuiImage(style.icon, vsg);
+                    }
+                    else if (!style.icon && styleDetail.iconImage)
+                    {
+                        styleDetail.iconImage = ImGuiImage();
                     }
                 });
         });
@@ -153,6 +276,9 @@ LabelSystem::on_construct_Label(entt::registry& r, entt::entity e)
 {
     (void)r.get_or_emplace<ActiveState>(e);
     (void)r.get_or_emplace<Visibility>(e);
+
+    r.emplace<detail::LabelDetail>(e);
+
     Label::dirty(r, e);
 
     if (r.all_of<Widget>(e))
@@ -173,7 +299,7 @@ LabelSystem::on_update_Label(entt::registry& r, entt::entity e)
 void
 LabelSystem::on_destroy_Label(entt::registry& r, entt::entity e)
 {
-    //nop
+    r.remove<detail::LabelDetail>(e);
 }
 
 void

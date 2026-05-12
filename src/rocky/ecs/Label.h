@@ -6,6 +6,7 @@
 #pragma once
 #include <rocky/Common.h>
 #include <rocky/Color.h>
+#include <rocky/Image.h>
 #include <rocky/ecs/Component.h>
 
 namespace ROCKY_NAMESPACE
@@ -26,10 +27,31 @@ namespace ROCKY_NAMESPACE
         float textSize = 24.0f;
 
         //! Width of the text outline, in pixels
-        float outlineSize = 1.0f;
+        float textOutlineSize = 1.0f;
 
-        //! Text outline color, when outlineSize > 0
-        Color outlineColor = Color("#0f0f0f");
+        //! Text outline color, when textOutlineSize > 0
+        Color textOutlineColor = Color("#0f0f0f");
+
+        //! Unit location of the pivot point; for alignment.
+        //! Each dimension is [0..1] where 0 is upper-left, 1 is lower-right.
+        glm::fvec2 textPivot = { 0.5f, 0.5f };
+
+        //! Screen offset of the label from its transformed position, in pixels
+        glm::ivec2 textOffset = { 0, 0 };
+
+
+        //! Image to use for an (optional) icon
+        Image::Ptr icon;
+
+        //! Image size in pixels
+        float iconSizePixels = 32.0f;
+
+        //! Image rotation in degrees
+        float iconRotationDegrees = 0.0f;
+
+        //! Pivot point for the icon , in unit coordinates [0..1] where 0 is upper-left, 1 is lower-right
+        glm::fvec2 iconPivot = { 0.5f, 0.5f };
+
 
         //! Width of the border, in pixels
         float borderSize = 0.0f;
@@ -40,15 +62,8 @@ namespace ROCKY_NAMESPACE
         //! Background color
         Color backgroundColor = StockColor::Transparent;
 
-        //! Padding between the text and the border (pixels)
+        //! Padding between the contents and the border (pixels)
         glm::fvec2 padding = { 2.0f, 2.0f };
-
-        //! Unit location of the pivot point; for alignment.
-        //! Each dimension is [0..1] where 0 is upper-left, 1 is lower-right.
-        glm::fvec2 pivot = { 0.5f, 0.5f };
-
-        //! Screen offset of the label from its transformed position, in pixels
-        glm::ivec2 offset = { 0, 0 };
     };
 
 

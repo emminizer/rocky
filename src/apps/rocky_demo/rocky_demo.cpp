@@ -91,7 +91,7 @@ std::vector<Demo> demos =
             Demo{ "Mesh - Lighting", Demo_Mesh_Lighting }
         } },
         Demo{ "Point", Demo_Point },
-        Demo{ "Icon", Demo_Icon },
+        //Demo{ "Icon", Demo_Icon },
         Demo{ "Model", Demo_Model },
         Demo{ "Label", Demo_Label },
         Demo{ "Widget", Demo_Widget }

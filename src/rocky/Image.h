@@ -104,6 +104,7 @@ namespace ROCKY_NAMESPACE
 
         //! Whether this object contains valid data
         inline bool valid() const;
+        inline operator bool() const { return valid(); }
 
         //! Pointer to the data array (type T).
         template<class T> T* data() {
