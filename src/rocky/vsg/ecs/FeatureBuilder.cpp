@@ -3,7 +3,7 @@
  * Copyright 2025 Pelican Mapping
  * MIT License
  */
-#include "FeatureView.h"
+#include "FeatureBuilder.h"
 #include <rocky/ElevationSampler.h>
 #include <rocky/weemesh.h>
 
@@ -128,7 +128,7 @@ namespace
                 {
                     tessellate_line_segment(input[i - 1], input[i], input_srs, interp, max_span, output, false);
                 }
-                //output.push_back(input.back());
+                output.push_back(input.back());
             }
             else
             {
@@ -386,8 +386,9 @@ namespace
     }
 }
 
+#if 0
 entt::entity
-FeatureView::generate(const SRS& output_srs, Registry& registry)
+FeatureBuilder::generate(const SRS& output_srs, Registry& registry)
 {
     Workspace ws;
     ws.lineGeom.topology = LineTopology::Segments;
@@ -429,7 +430,7 @@ FeatureView::generate(const SRS& output_srs, Registry& registry)
 
         else
         {
-            Log()->warn("FeatureView no support for " + Geometry::typeToString(feature.geometry.type));
+            Log()->warn("FeatureBuilder no support for " + Geometry::typeToString(feature.geometry.type));
         }
     }
 
@@ -462,18 +463,49 @@ FeatureView::generate(const SRS& output_srs, Registry& registry)
 
     return e;
 }
-
+#endif
 
 void
-FeatureView::generateLine(const Feature& feature, const LineStyle& style, const GeoPoint& origin,
-    ElevationSession& clamper, const SRS& output_srs, LineGeometry& lineGeom)
+FeatureBuilder::buildLineGeometry(const std::vector<Feature>& features, const LineStyle& style,
+    const SRS& output_srs, LineGeometry& lineGeom)
 {
-    compile_feature_to_lines(feature, style, origin, clamper, output_srs, lineGeom);
+    lineGeom.topology = LineTopology::Segments;
+    lineGeom.srs = output_srs;
+
+    if (colorFunction)
+    {
+        LineStyle tempStyle = style;
+        for (auto& feature : features)
+        {
+            tempStyle.color = colorFunction(feature);
+            compile_feature_to_lines(feature, tempStyle, origin, clamper, output_srs, lineGeom);
+        }
+    }
+    else
+    {
+        for (auto& feature : features)
+            compile_feature_to_lines(feature, style, origin, clamper, output_srs, lineGeom);
+    }
 }
 
 void
-FeatureView::generateMesh(const Feature& feature, const MeshStyle& style,
-    const GeoPoint& origin, ElevationSession& clamper, const SRS& output_srs, MeshGeometry& meshGeom)
+FeatureBuilder::buildMeshGeometry(const std::vector<Feature>& features, const MeshStyle& style,
+    const SRS& output_srs, MeshGeometry& meshGeom)
 {
-    compile_polygon_feature_with_weemesh(feature, style, origin, clamper, output_srs, meshGeom);
+    meshGeom.srs = output_srs;
+
+    if (colorFunction)
+    {
+        MeshStyle tempStyle = style;
+        for (auto& feature : features)
+        {
+            tempStyle.color = colorFunction(feature);
+            compile_polygon_feature_with_weemesh(feature, tempStyle, origin, clamper, output_srs, meshGeom);
+        }
+    }
+    else
+    {
+        for (auto& feature : features)
+            compile_polygon_feature_with_weemesh(feature, style, origin, clamper, output_srs, meshGeom);
+    }
 }

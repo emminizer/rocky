@@ -18,9 +18,25 @@ auto Demo_MVTFeatures = [](Application& app)
 
     static vsg::ref_ptr<NodePager> pager;
     static ElevationSampler elevationSampler;
+    static entt::entity styleEntity = entt::null;
 
     if (!pager)
     {
+        // An entity to hold our shared styles
+        app.registry.write([&](entt::registry& reg)
+            {
+                styleEntity = reg.create();
+
+                auto& lineStyle = reg.emplace<LineStyle>(styleEntity);
+                lineStyle.color = StockColor::Red;
+                lineStyle.width = 5.0f;
+                lineStyle.depthOffset = 10; // meters
+
+                auto& meshStyle = reg.emplace<MeshStyle>(styleEntity);
+                meshStyle.color = Color(1, 0.75f, 0.2f, 1);
+                meshStyle.depthOffset = 12; // meters
+            });
+
         // Set up our elevation clamper.
         elevationSampler.layer = app.mapNode->map->layer<ElevationLayer>();
 
@@ -58,7 +74,7 @@ auto Demo_MVTFeatures = [](Application& app)
         // This (required) functor will create the actual geometry for each tile
         pager->createPayload = [&app](const TileKey& key, const IOOptions& io)
             {
-                vsg::ref_ptr<vsg::Node> result;
+                vsg::ref_ptr<EntityNode> entityNode;
 
                 // Feature source that will read MVT from the intercloud:
                 auto gdal = GDALFeatureSource::create();
@@ -70,32 +86,17 @@ auto Demo_MVTFeatures = [](Application& app)
                 if (status.failed())
                 {
                     Log()->warn(status.error().message);
-                    return result;
+                    return entityNode;
                 }
 
-                // FeatureView is a helper that will generate basic primitives from feature data.
-                FeatureView fview;
-
-                // specify an origin to localize our geometry, so it doesn't jitter
-                fview.origin = key.extent().centroid();
-
-                // set up the styling for the FeatureView to use for lines and meshes.
-                fview.styles.lineStyle.color = StockColor::Red;
-                fview.styles.lineStyle.width = 5.0f;
-                fview.styles.lineStyle.depthOffset = 10; // meters
-
-                fview.styles.meshStyle.color = Color(1, 0.75f, 0.2f, 1);
-                fview.styles.meshStyle.depthOffset = 12; // meters
-
-                if (gdal->featureCount() > 0)
-                    fview.features.reserve(gdal->featureCount());
+                std::vector<Feature> buildings, roads;
 
                 // iterate over all the features and pick the ones we want
                 gdal->each(io, [&](Feature&& f)
                     {
                         if (f.hasField("building") && f.geometry.type == Geometry::Type::Polygon)
                         {
-                            fview.features.emplace_back(std::move(f));
+                            buildings.emplace_back(std::move(f));
                         }
 
                         else if (f.field("highway") == "motorway" ||
@@ -104,40 +105,78 @@ auto Demo_MVTFeatures = [](Application& app)
                             f.field("highway") == "secondary" ||
                             f.field("highway") == "tertiary")
                         {
-                            // convert to a line string:
-                            fview.features.emplace_back(std::move(f));
+                            roads.emplace_back(std::move(f));
                         }
                     });
-                
-                if (!fview.features.empty())
+
+                // Feature building utility
+                FeatureBuilder builder;
+
+                // origin to localize our geometry, so it doesn't jitter
+                builder.origin = key.extent().centroid();
+
+                // to clamp features to the terrain
+                builder.clamper = elevationSampler.session(io);
+                builder.clamper.level = key.level;
+
+                if (!buildings.empty())
                 {
-                    // tell the FeatureView to use the elevation clamper.                    
-                    fview.clamper = elevationSampler.session(io);
-                    fview.clamper.level = key.level;
-                    fview.clamper.srs = fview.features.front().srs;
+                    if (!entityNode)
+                        entityNode = EntityNode::create(app.registry); 
 
-                    // generate primitives from features:
-                    auto entity = fview.generate(app.mapNode->srs(), app.registry);
+                    // generate the geometry "offline" to prevent locking.
+                    MeshStyle style = app.registry.read().registry.get<MeshStyle>(styleEntity);
+                    MeshGeometry geomTemp;
 
-                    if (entity != entt::null)
-                    {
-                        auto node = EntityNode::create(app.registry);
+                    builder.clamper.srs = buildings.front().srs;
 
-                        // Take a write-lock to move the primitives into ECS entities.
-                        app.registry.write([&](entt::registry& reg)
-                            {
-                                // Since we localized to an origin, the tile needs a transform:
-                                auto& xform = reg.get_or_emplace<Transform>(entity);
-                                xform.position = fview.origin;
-                                xform.frustumCulled = false; // NodePager will take care of frustum culling for us
-                                node->entities.emplace_back(entity);
-                            });
+                    builder.buildMeshGeometry(buildings, style, app.mapNode->srs(), geomTemp);
 
-                        result = node;
-                    }
+                    app.registry.write([&](entt::registry& reg)
+                        {
+                            auto& style = reg.get<MeshStyle>(styleEntity);
+
+                            auto entity = reg.create();
+                            auto& geom = reg.emplace<MeshGeometry>(entity, geomTemp);
+                            reg.emplace<Mesh>(entity, geom, style);
+
+                            auto& xform = reg.emplace<Transform>(entity);
+                            xform.position = builder.origin;
+                            xform.frustumCulled = false; // NodePager will take care of frustum culling for us
+
+                            entityNode->entities.emplace_back(entity);
+                        });
                 }
 
-                return result;
+                if (!roads.empty())
+                {
+                    if (!entityNode)
+                        entityNode = EntityNode::create(app.registry);
+
+                    LineStyle style = app.registry.read().registry.get<LineStyle>(styleEntity);
+                    LineGeometry geomTemp;
+
+                    builder.clamper.srs = roads.front().srs;
+
+                    builder.buildLineGeometry(roads, style, app.mapNode->srs(), geomTemp);
+
+                    app.registry.write([&](entt::registry& reg)
+                        {
+                            auto& style = reg.get<LineStyle>(styleEntity);
+
+                            auto entity = reg.create();
+                            auto& geom = reg.emplace<LineGeometry>(entity, geomTemp);
+                            reg.emplace<Line>(entity, geom, style);
+
+                            auto& xform = reg.emplace<Transform>(entity);
+                            xform.position = builder.origin;
+                            xform.frustumCulled = false; // NodePager will take care of frustum culling for us
+
+                            entityNode->entities.emplace_back(entity);
+                        });
+                }
+
+                return entityNode;
             };
 
         // Always initialize a NodePager before using it:

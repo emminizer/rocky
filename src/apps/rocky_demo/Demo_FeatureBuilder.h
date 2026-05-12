@@ -8,7 +8,7 @@
 
 using namespace ROCKY_NAMESPACE;
 
-auto Demo_FeatureView = [](Application& app)
+auto Demo_FeatureBuilder = [](Application& app)
     {
         static entt::entity entity = entt::null;
 
@@ -60,13 +60,11 @@ auto Demo_FeatureView = [](Application& app)
             auto& lineStyle = reg.emplace<LineStyle>(entity);
             lineStyle.color = StockColor::Gray;
             lineStyle.depthOffset = 50000;
-            lineStyle.resolution = 10000.0; // max segment length in meters for tessellation
+            lineStyle.resolution = 150000.0; // max segment length in meters (for tessellation)
 
-            GeoPoint offset; // unused
-            ElevationSession session; // unused
+            FeatureBuilder builder;
 
-            FeatureView::generateLine(meridians, lineStyle, offset, session, app.mapNode->srs(), lineGeom);
-            FeatureView::generateLine(parallels, lineStyle, offset, session, app.mapNode->srs(), lineGeom);
+            builder.buildLineGeometry({ meridians, parallels }, lineStyle, app.mapNode->srs(), lineGeom);
 
             // The Line ties it all together:
             reg.emplace<Line>(entity, lineGeom, lineStyle);
@@ -74,5 +72,5 @@ auto Demo_FeatureView = [](Application& app)
             app.vsgcontext->requestFrame();
         }
 
-        ImGui::TextWrapped("%s", "FeatureView is a helper utility for turning GIS feature data into geometry (lines and meshes).");
+        ImGui::TextWrapped("%s", "FeatureBuilder is a helper utility for turning GIS feature data into geometry (lines and meshes).");
     };

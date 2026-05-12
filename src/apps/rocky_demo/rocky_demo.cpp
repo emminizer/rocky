@@ -39,7 +39,7 @@ using namespace ROCKY_NAMESPACE;
 #include "Demo_Decluttering.h"
 #include "Demo_GeoTransform.h"
 #include "Demo_NodePager.h"
-#include "Demo_FeatureView.h"
+#include "Demo_FeatureBuilder.h"
 #include "Demo_MVTFeatures.h"
 #include "Demo_DrawComponent.h"
 #include "Demo_ElevationSampler.h"
@@ -107,7 +107,7 @@ std::vector<Demo> demos =
         Demo{ "Line features", Demo_LineFeatures },
         Demo{ "Labels from features", Demo_LabelFeatures },
         Demo{ "Vector tiles", Demo_MVTFeatures },
-        Demo{ "FeatureView", Demo_FeatureView }
+        Demo{ "Feature builder", Demo_FeatureBuilder }
     } },
     Demo{ "Simulation", {},
     {

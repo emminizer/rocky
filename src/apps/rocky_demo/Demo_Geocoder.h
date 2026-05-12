@@ -130,15 +130,21 @@ auto Demo_Geocoder = [](Application& app)
                                 if (myfeature.geometry.type != Geometry::Type::Points)
                                 {
                                     // Outline for location boundary:
-                                    FeatureView featureView;
-                                    featureView.entity = placemark.outline; // ...to update an existing entity
-                                    featureView.features = { myfeature };
-                                    featureView.styles.lineStyle.color = StockColor::Yellow;
-                                    featureView.styles.lineStyle.depthOffset = 9000.0f; // meters
-                                    featureView.generate(app.mapNode->srs(), app.registry);
+                                    FeatureBuilder builder;
+                                    
+                                    LineStyle workingStyle;
+                                    workingStyle.color = StockColor::Yellow;
+                                    workingStyle.depthOffset = 9000.0f; // meters
+
+                                    LineGeometry workingGeom;
+                                    builder.buildLineGeometry({ myfeature }, workingStyle, app.mapNode->srs(), workingGeom);
 
                                     app.registry.write([&](entt::registry& r)
-                                        {                                            
+                                        {
+                                            auto& style = r.emplace_or_replace<LineStyle>(placemark.outline, std::move(workingStyle));
+                                            auto& geom = r.emplace_or_replace<LineGeometry>(placemark.outline, std::move(workingGeom));
+                                            r.emplace_or_replace<Line>(placemark.outline, geom, style);
+
                                             placemark.show(r, true);
 
                                             // update the label and the transform:

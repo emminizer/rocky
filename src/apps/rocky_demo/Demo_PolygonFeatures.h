@@ -4,7 +4,7 @@
  * MIT License
  */
 #pragma once
-#include <rocky/vsg/ecs/FeatureView.h>
+#include <rocky/vsg/ecs/FeatureBuilder.h>
 #include <rocky/GDALFeatureSource.h>
 #include <random>
 #include "helpers.h"
@@ -44,34 +44,45 @@ auto Demo_PolygonFeatures = [](Application& app)
         }
         else if (data.available() && data->status.ok())
         {
-            FeatureView featureView;
-
-            // create a feature view and add features to it
+            // read in our feature data:
+            std::vector<Feature> features;
             if (data->fs->featureCount() > 0)
-                featureView.features.reserve(data->fs->featureCount());
+                features.reserve(data->fs->featureCount());
 
-            auto iter = data->fs->iterate(app.vsgcontext->io);
-            while (iter.hasMore())
-            {
-                auto feature = iter.next();
-                if (feature.valid())
+            data->fs->each(app.vsgcontext->io, [&](Feature&& feature)
                 {
-                    featureView.features.emplace_back(std::move(feature));
-                }
-            }
+                    features.emplace_back(std::move(feature));
+                });
 
-            // generate random colors for the feature geometry:
+
+            // a style for geometry creation:
+            MeshStyle style;
+            style.depthOffset = 9000.0f;
+            style.useGeometryColors = true;
+
+            // a geometry to populate:
+            MeshGeometry workingGeom;
+
+            // create our cbuilder and populate the geometry:
+            FeatureBuilder builder;
+
             std::uniform_real_distribution<float> frand(0.15f, 1.0f);
-
-            featureView.styles.meshStyle.depthOffset = 9000.0f;
-            featureView.styles.meshStyle.useGeometryColors = true;
-            featureView.styles.meshColorFunction = [&frand](const Feature& f)
+            builder.colorFunction = [&frand](const Feature& f)
                 {
                     std::default_random_engine re(f.id);
                     return Color{ frand(re), frand(re), frand(re), 1.0f };
                 };
 
-            entity = featureView.generate(app.mapNode->srs(), app.registry);
+            builder.buildMeshGeometry(features, style, app.mapNode->srs(), workingGeom);
+
+            // create an entity and components to house the objects:
+            app.registry.write([&](entt::registry& reg)
+                {
+                    entity = reg.create();
+                    auto& meshStyle = reg.emplace<MeshStyle>(entity, style);
+                    auto& meshGeom = reg.emplace<MeshGeometry>(entity, workingGeom);
+                    reg.emplace<Mesh>(entity, meshGeom, meshStyle);
+                });
 
             ready = true;
             app.vsgcontext->requestFrame();

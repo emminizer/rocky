@@ -38,26 +38,42 @@ auto Demo_LineFeatures = [](Application& app)
         }
         else if (data.available() && data->status.ok())
         {
-            FeatureView featureView;
+            // read in our feature data:
+            std::vector<Feature> features;
+            if (data->fs->featureCount() > 0)
+                features.reserve(data->fs->featureCount());
 
-            // create a feature view and add features to it:
             data->fs->each(app.vsgcontext->io, [&](Feature&& feature)
                 {
                     // convert anything we find to lines:
                     feature.geometry.convertToType(Geometry::Type::LineString);
-                    featureView.features.emplace_back(std::move(feature));
+                    features.emplace_back(std::move(feature));
                 });
 
-            // apply a style for geometry creation:
-            featureView.styles.lineStyle.color = StockColor::Yellow;
-            featureView.styles.lineStyle.width = 2.0f;
-            featureView.styles.lineStyle.resolution = 10000.0f;
-            featureView.styles.lineStyle.depthOffset = 25000.0f;
+            // a style for geometry creation:
+            LineStyle style;
+            style.color = StockColor::Yellow;
+            style.width = 2.0f;
+            style.resolution = 10000.0f;
+            style.depthOffset = 25000.0f;
 
-            auto entity = featureView.generate(SRS::ECEF, app.registry);
+            // a geometry to populate:
+            LineGeometry workingGeom;
 
-            if (entity != entt::null)
-                entities.emplace_back(entity);
+            // create our builder and populate the geometry:
+            FeatureBuilder builder;
+            builder.buildLineGeometry(features, style, app.mapNode->srs(), workingGeom);
+
+            // create an entity and components to house the objects:
+            app.registry.write([&](entt::registry& reg)
+                {
+                    auto e = reg.create();
+                    auto& lineStyle = reg.emplace<LineStyle>(e, style);
+                    auto& lineGeom = reg.emplace<LineGeometry>(e, workingGeom);
+                    reg.emplace<Line>(e, lineGeom, lineStyle);
+
+                    entities.emplace_back(e);
+                });
 
             app.vsgcontext->requestFrame();
         }
