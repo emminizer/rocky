@@ -11,6 +11,35 @@ using namespace ROCKY_NAMESPACE;
 
 namespace
 {
+    double normalize_longitude(double x)
+    {
+        constexpr double EPS = 1e-8;
+        if (fabs(x - (-180.0)) < EPS || fabs(x - 180.0) < EPS)
+            return -180.0;
+
+        while (x < -180.0)
+            x += 360.0;
+        while (x >= 180.0)
+            x -= 360.0;
+
+        return x;
+    }
+
+    template<class T>
+    T rhumb_midpoint(const T& p1, const T& p2)
+    {
+        T p2_unwrapped = p2;
+
+        while (p2_unwrapped.x - p1.x > 180.0)
+            p2_unwrapped.x -= 360.0;
+        while (p2_unwrapped.x - p1.x < -180.0)
+            p2_unwrapped.x += 360.0;
+
+        T midpoint = (p1 + p2_unwrapped) * 0.5;
+        midpoint.x = normalize_longitude(midpoint.x);
+        return midpoint;
+    }
+
     // Transforms a range of points from geographic (long lat) to gnomonic coordinates
     // around a centroid with an optional scale.
     template<class T, class ITER>
@@ -41,12 +70,21 @@ namespace
         {
             double x = p->x / scale, y = p->y / scale;
             double rho = sqrt(x * x + y * y);
+            if (rho == 0.0)
+            {
+                p->x = centroid.x;
+                p->y = centroid.y;
+                continue;
+            }
+
             double c = atan(rho);
 
             double lat = asin(cos(c) * sin(lat0) + (y * sin(c) * cos(lat0) / rho));
-            double lon = lon0 + atan((x * sin(c)) / (rho * cos(lat0) * cos(c) - y * sin(lat0) * sin(c)));
+            double lon = lon0 + atan2(
+                x * sin(c),
+                rho * cos(lat0) * cos(c) - y * sin(lat0) * sin(c));
 
-            p->x = glm::degrees(lon);
+            p->x = normalize_longitude(glm::degrees(lon));
             p->y = glm::degrees(lat);
         }
     }
@@ -80,7 +118,7 @@ namespace
                     }
                     else // GeodeticInterpolation::RhumbLine
                     {
-                        midpoint = (p1 + p2) * 0.5;
+                        midpoint = rhumb_midpoint(p1, p2);
                     }
                     list.insert(iter, midpoint);
                     iter = save;
@@ -234,9 +272,56 @@ namespace
         auto geo_to_world = feature_geo.to(output_srs);
 
         // centroid for use with the gnomonic projection:
-        glm::dvec3 centroid;
-        feature.extent.getCentroid(centroid.x, centroid.y);
-        feature_to_geo.transform(centroid, centroid);
+        glm::dvec3 centroid(0.0);
+        bool have_centroid = false;
+
+        if (feature.srs.isGeodetic())
+        {
+            double lon_sin_sum = 0.0;
+            double lon_cos_sum = 0.0;
+            double lat_sum = 0.0;
+            std::size_t point_count = 0;
+
+            feature.geometry.eachPart([&](const Geometry& part)
+                {
+                    for (auto p : part.points)
+                    {
+                        feature_to_geo.transform(p, p);
+                        double lon = glm::radians(p.x);
+                        lon_sin_sum += sin(lon);
+                        lon_cos_sum += cos(lon);
+                        lat_sum += p.y;
+                        ++point_count;
+                    }
+                });
+
+            if (point_count > 0)
+            {
+                centroid.x = glm::degrees(atan2(lon_sin_sum, lon_cos_sum));
+                centroid.y = lat_sum / (double)point_count;
+                have_centroid = true;
+            }
+        }
+        else
+        {
+            Box feature_bounds;
+
+            feature.geometry.eachPart([&](const Geometry& part)
+                {
+                    feature_bounds.expandBy(part.points.begin(), part.points.end());
+                });
+
+            if (feature_bounds.valid())
+            {
+                centroid = feature_bounds.center();
+                have_centroid = feature_to_geo.transform(centroid, centroid);
+            }
+        }
+
+        if (!have_centroid && feature.extent.getCentroid(centroid.x, centroid.y))
+        {
+            have_centroid = feature_to_geo.transform(centroid, centroid);
+        }
 
         // transform to gnomonic. We are not using SRS/PROJ for the gnomonic projection
         // because it would require creating a new SRS for each and every feature (because

@@ -69,6 +69,120 @@ auto Demo_FeatureBuilder = [](Application& app)
             // The Line ties it all together:
             reg.emplace<Line>(entity, lineGeom, lineStyle);
 
+
+            // Test: polygon feature that crosses the antimeridian.
+            // See: a cyan rectangle spanning the 180th meridian from 10S to 10N
+            {
+                Feature poly;
+                poly.geometry.type = Geometry::Type::Polygon;
+                poly.srs = SRS::WGS84;
+                poly.geometry.points = {
+                    { 170.0, -10.0, 0.0 },
+                    { -170.0, -10.0, 0.0 },
+                    { -170.0,  10.0, 0.0 },
+                    { 170.0,  10.0, 0.0 }
+                };
+                auto e = reg.create();
+                auto& meshStyle = reg.emplace<MeshStyle>(e);
+                meshStyle.color = StockColor::Aqua;
+                meshStyle.depthOffset = 50000;
+                FeatureBuilder builder;
+                auto& meshGeom = reg.emplace<MeshGeometry>(e);
+                builder.buildMeshGeometry({ poly }, meshStyle, app.mapNode->srs(), meshGeom);
+                reg.emplace<Mesh>(e, meshGeom, meshStyle);
+            }
+
+
+            // Test: line feature that crosses the antimeridian
+            // See: a purple line spanning the 180th meridian at 25S, using rhumb line interpolation
+            {
+                Feature line;
+                line.geometry.type = Geometry::Type::LineString;
+                line.interpolation = GeodeticInterpolation::RhumbLine;
+                line.srs = SRS::WGS84;
+                line.geometry.points = {
+                    { 170.0, -25.0, 0.0 },
+                    { -170.0, -25.0, 0.0 }
+                };
+                auto e = reg.create();
+                auto& lineStyle = reg.emplace<LineStyle>(e);
+                lineStyle.color = StockColor::Fuchsia;
+                lineStyle.depthOffset = 50000;
+                lineStyle.width = 5.0f;
+                FeatureBuilder builder;
+                auto& lineGeom = reg.emplace<LineGeometry>(e);
+                builder.buildLineGeometry({ line }, lineStyle, app.mapNode->srs(), lineGeom);
+                reg.emplace<Line>(e, lineGeom, lineStyle);
+            }
+
+
+            // Test: polar polygon in stereographic coordinates
+            // See: a rectangle centered on the north pole
+            {
+                Feature poly;
+                poly.geometry.type = Geometry::Type::Polygon;
+                poly.srs = SRS::SRS("EPSG:3413"); // NS polar stereographic
+                poly.geometry.points = {
+                    { -500000.0, -500000.0, 0.0 },
+                    {  500000.0, -500000.0, 0.0 },
+                    {  500000.0,  500000.0, 0.0 },
+                    { -500000.0,  500000.0, 0.0 }
+                };
+                auto e = reg.create();
+                auto& meshStyle = reg.emplace<MeshStyle>(e);
+                meshStyle.color = StockColor::Orange;
+                meshStyle.depthOffset = 50000;
+                FeatureBuilder builder;
+                auto& meshGeom = reg.emplace<MeshGeometry>(e);
+                builder.buildMeshGeometry({ poly }, meshStyle, app.mapNode->srs(), meshGeom);
+                reg.emplace<Mesh>(e, meshGeom, meshStyle);
+            }
+
+
+            // Test: polar line geometry in stereographic coords
+            // See: a red line crossing the south pole
+            {
+                Feature line;
+                line.geometry.type = Geometry::Type::LineString;
+                line.interpolation = GeodeticInterpolation::GreatCircle;
+                line.srs = SRS::SRS("EPSG:3031"); // south polar stereographic
+                line.geometry.points = {
+                    { -500000.0, -500000.0, 0.0 },
+                    {  500000.0,  500000.0, 0.0 }
+                };
+                auto e = reg.create();
+                auto& lineStyle = reg.emplace<LineStyle>(e);
+                lineStyle.color = StockColor::Red;
+                lineStyle.depthOffset = 50000;
+                lineStyle.width = 5.0f;
+                FeatureBuilder builder;
+                auto& lineGeom = reg.emplace<LineGeometry>(e);
+                builder.buildLineGeometry({ line }, lineStyle, app.mapNode->srs(), lineGeom);
+                reg.emplace<Line>(e, lineGeom, lineStyle);
+            }
+
+
+            // Test: a giant polygon that is more than 180 degrees wide
+            {
+                Feature poly;
+                poly.geometry.type = Geometry::Type::Polygon;
+                poly.srs = SRS::WGS84;
+                poly.geometry.points = {
+                    { -80.0, -25.0, 0.0 },
+                    { -80.0, -30.0, 0.0 },
+                    {  80.0, -30.0, 0.0 },
+                    {  80.0, -25.0, 0.0 }
+                };
+                auto e = reg.create();
+                auto& meshStyle = reg.emplace<MeshStyle>(e);
+                meshStyle.color = StockColor::Lime;
+                meshStyle.depthOffset = 50000;
+                FeatureBuilder builder;
+                auto& meshGeom = reg.emplace<MeshGeometry>(e);
+                builder.buildMeshGeometry({ poly }, meshStyle, app.mapNode->srs(), meshGeom);
+                reg.emplace<Mesh>(e, meshGeom, meshStyle);
+            }
+
             app.vsgcontext->requestFrame();
         }
 

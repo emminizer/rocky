@@ -1,6 +1,6 @@
 /**
  * rocky c++
- * Copyright 2025 Pelican Mapping
+ * Copyright 2026 Pelican Mapping
  * MIT License
  */
 
@@ -19,7 +19,7 @@ using namespace ROCKY_NAMESPACE;
 #include "Demo_Line.h"
 #include "Demo_Mesh.h"
 #include "Demo_Point.h"
-#include "Demo_Icon.h"
+//#include "Demo_Icon.h"
 #include "Demo_Model.h"
 #include "Demo_Label.h"
 #include "Demo_Widget.h"
@@ -92,9 +92,9 @@ std::vector<Demo> demos =
         } },
         Demo{ "Point", Demo_Point },
         //Demo{ "Icon", Demo_Icon },
-        Demo{ "Model", Demo_Model },
         Demo{ "Label", Demo_Label },
-        Demo{ "Widget", Demo_Widget }
+        Demo{ "Widget", Demo_Widget },
+        Demo{ "Model", Demo_Model }
     } },
     Demo{ "VSG Nodes", {},
     {

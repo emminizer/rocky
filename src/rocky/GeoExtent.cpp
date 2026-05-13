@@ -470,53 +470,29 @@ GeoExtent::expandToInclude(double x, double y)
     {
         if (_srs.isGeodetic())
         {
-            // For geodetic coordinates, we need to consider antimeridian wrap-around
-            double current_east = east();
-            double current_width = width();
-            
-            // Calculate the two possible expansions:
-            // 1. Direct expansion (no wrap-around)
-            double new_west_direct = std::min(west(), x);
-            double new_east_direct = std::max(current_east, x);
-            double width_direct = new_east_direct - new_west_direct;
-            
-            // Handle the case where direct expansion would cross 180/-180
-            if (width_direct > 180.0)
+            // Work in an unwrapped longitude frame anchored at the current western edge,
+            // then choose the smaller of expanding eastward or westward around the globe.
+            double west0 = west();
+            double east0 = west0 + width();
+            double x_east = x;
+
+            while (x_east < west0)
+                x_east += 360.0;
+            while (x_east >= west0 + 360.0)
+                x_east -= 360.0;
+
+            double width_east = x_east - west0;
+            double x_west = x_east - 360.0;
+            double width_west = east0 - x_west;
+
+            if (width_west < width_east)
             {
-                // Need to consider wrap-around
-                double width_wrap;
-                double new_west_wrap;
-                
-                if (x < west())
-                {
-                    // Expanding westward past the antimeridian
-                    width_wrap = (west() - (-180.0)) + (180.0 - x);
-                    new_west_wrap = x;
-                }
-                else
-                {
-                    // Expanding eastward past the antimeridian  
-                    width_wrap = (x - (-180.0)) + (180.0 - west());
-                    new_west_wrap = west();
-                }
-                
-                // Choose the smaller expansion
-                if (width_wrap < width_direct)
-                {
-                    _west = new_west_wrap;
-                    _width = width_wrap;
-                }
-                else
-                {
-                    _west = new_west_direct;
-                    _width = width_direct;
-                }
+                _west = normalizeX(x_west);
+                _width = width_west;
             }
             else
             {
-                // Direct expansion is fine
-                _west = new_west_direct;
-                _width = width_direct;
+                _width = width_east;
             }
         }
         else

@@ -119,17 +119,17 @@ Geometry::contains(double x, double y) const
 void
 Feature::dirtyExtent()
 {
-    Box box;
+    GeoExtent new_extent(srs);
 
     geometry.eachPart([&](const Geometry& part)
         {
             for (const auto& point : part.points)
             {
-                box.expandBy(point);
+                new_extent.expandToInclude(point.x, point.y);
             }
         });
 
-    extent = GeoExtent(srs, box);
+    extent = new_extent;
 }
 
 bool
