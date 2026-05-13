@@ -280,7 +280,7 @@ TerrainNode::update(VSGContext context)
     }
 
     // check for settings changes
-    this->children[0].mask = castShadows ? vsg::MASK_ALL : (vsg::MASK_ALL & ~0x01);    
+    this->children[0].mask = castShadows ? vsg::MASK_ALL : (vsg::MASK_ALL & ~VSG_SHADOW_CAMERA_TRAVERSAL_MASK);
 
     state->updateSettings(*this);
 

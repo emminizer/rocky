@@ -21,6 +21,9 @@ namespace ROCKY_NAMESPACE
     class VSGContextImpl;
     using VSGContext = VSGContextImpl*;
 
+    // NB: This value is currently hard-coded in VSG (as of 1.1.14)
+    constexpr std::uint32_t VSG_SHADOW_CAMERA_TRAVERSAL_MASK = 0x01;
+
     namespace detail
     {
         using GuiRecorder = std::function<void(const RenderingState&, void* guiContext)>;

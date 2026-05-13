@@ -558,6 +558,7 @@ vsg::CompileResult
 VSGContextImpl::compile(vsg::ref_ptr<vsg::Object> compilable)
 {
     ROCKY_SOFT_ASSERT_AND_RETURN(compilable.valid(), {});
+    ROCKY_SOFT_ASSERT_AND_RETURN(_viewer && _viewer->compileManager, {});
 
     // note: this can block (with a fence) until a compile traversal is available.
     // Be sure to group as many compiles together as possible for maximum performance.

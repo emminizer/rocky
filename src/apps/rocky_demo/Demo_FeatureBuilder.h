@@ -122,7 +122,7 @@ auto Demo_FeatureBuilder = [](Application& app)
             {
                 Feature poly;
                 poly.geometry.type = Geometry::Type::Polygon;
-                poly.srs = SRS::SRS("EPSG:3413"); // NS polar stereographic
+                poly.srs = SRS("EPSG:3413"); // NS polar stereographic
                 poly.geometry.points = {
                     { -500000.0, -500000.0, 0.0 },
                     {  500000.0, -500000.0, 0.0 },
@@ -147,7 +147,7 @@ auto Demo_FeatureBuilder = [](Application& app)
                 Feature line;
                 line.geometry.type = Geometry::Type::LineString;
                 line.interpolation = GeodeticInterpolation::GreatCircle;
-                line.srs = SRS::SRS("EPSG:3031"); // south polar stereographic
+                line.srs = SRS("EPSG:3031"); // south polar stereographic
                 line.geometry.points = {
                     { -500000.0, -500000.0, 0.0 },
                     {  500000.0,  500000.0, 0.0 }

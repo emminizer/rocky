@@ -30,7 +30,7 @@ namespace ROCKY_NAMESPACE
             //! A single collection of points (in "points")
             Points,
 
-            //! A single collection of line segments (in "points")
+            //! A single continuous line string (in "points")
             LineString,
 
             //! One polygon. "points" contains the outer ring with a CCW winding.

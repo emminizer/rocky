@@ -11,6 +11,8 @@ using namespace ROCKY_NAMESPACE;
 
 namespace
 {
+    //! Normalizes a longitude to [-180, 180), treating both antimeridian signs
+    //! as the same seam value.
     double normalize_longitude(double x)
     {
         constexpr double EPS = 1e-8;
@@ -25,6 +27,8 @@ namespace
         return x;
     }
 
+    //! Computes the midpoint of a geodetic segment using longitude/latitude
+    //! interpolation in an unwrapped longitude frame.
     template<class T>
     T rhumb_midpoint(const T& p1, const T& p2)
     {
@@ -40,8 +44,8 @@ namespace
         return midpoint;
     }
 
-    // Transforms a range of points from geographic (long lat) to gnomonic coordinates
-    // around a centroid with an optional scale.
+    //! Transforms a range of geodetic longitude/latitude points to local gnomonic
+    //! coordinates around a feature-specific centroid.
     template<class T, class ITER>
     void geo_to_gnomonic(ITER begin, ITER end, const T& centroid, double scale = 1.0)
     {
@@ -58,8 +62,8 @@ namespace
         }
     }
 
-    // Transforms a range of points from gnomonic coordinates around a centroid with a
-    // given scale to geographic (long lat) coordinates.
+    //! Transforms a range of local gnomonic points back to geodetic
+    //! longitude/latitude coordinates around the same centroid.
     template<class T, class ITER>
     void gnomonic_to_geo(ITER begin, ITER end, const T& centroid, double scale = 1.0)
     {
@@ -89,6 +93,8 @@ namespace
         }
     }
 
+    //! Recursively subdivides one geodetic or geocentric segment until it meets
+    //! the maximum span, appending points to the output vector.
     template<class T>
     void tessellate_line_segment(const T& from, const T& to, const SRS& input_srs, const GeodeticInterpolation interp, float max_span, std::vector<T>& output, bool add_last_point)
     {
@@ -153,6 +159,7 @@ namespace
         }
     }
 
+    //! Tessellates a polyline according to its SRS and geodetic interpolation mode.
     std::vector<glm::dvec3> tessellate_linestring(const std::vector<glm::dvec3>& input, const SRS& input_srs, GeodeticInterpolation interp, float max_span)
     {
         std::vector<glm::dvec3> output;
@@ -177,6 +184,8 @@ namespace
         return output;
     }
 
+    //! Splits a geodetic line string into separate parts wherever it crosses the
+    //! antimeridian, inserting seam vertices on both sides of the longitude wrap.
     std::vector<std::vector<glm::dvec3>> split_linestring_at_antimeridian(const std::vector<glm::dvec3>& input)
     {
         std::vector<std::vector<glm::dvec3>> output;
@@ -233,6 +242,8 @@ namespace
         return output;
     }
 
+    //! Tessellates a closed polygon ring while preserving the ring as an implicit
+    //! loop instead of duplicating the first vertex at the end.
     std::vector<glm::dvec3> tessellate_polygon_ring(
         const std::vector<glm::dvec3>& input,
         const SRS& input_srs,
@@ -259,6 +270,8 @@ namespace
         return output;
     }
 
+    //! Tessellates every ring in a polygon or multipolygon. For polygons, points
+    //! remain the outer ring and parts remain simple hole rings.
     void tessellate_polygon_edges(Geometry& geometry, const SRS& input_srs, GeodeticInterpolation interp, float max_span)
     {
         if (!input_srs.isGeodetic() && !input_srs.isGeocentric())
@@ -271,6 +284,7 @@ namespace
             });
     }
 
+    //! Returns the longest straight segment length in the input coordinate system.
     float get_max_segment_length(const std::vector<glm::dvec3>& input)
     {
         float m = 0.0f;
@@ -281,6 +295,7 @@ namespace
         return m;
     }
 
+    //! Computes great-circle angular distance in degrees between two geodetic points.
     double angular_distance_degrees(const glm::dvec3& a, const glm::dvec3& b)
     {
         double lon1 = glm::radians(a.x);
@@ -295,6 +310,8 @@ namespace
         return glm::degrees(2.0 * asin(std::min(1.0, sqrt(h))));
     }
 
+    //! Estimates a geodetic center by averaging latitude and using a circular mean
+    //! for longitude so antimeridian-spanning geometries stay centered correctly.
     bool get_geometry_geodetic_center(const Geometry& geometry, glm::dvec3& out_center)
     {
         double lon_sin_sum = 0.0;
@@ -323,6 +340,8 @@ namespace
         return true;
     }
 
+    //! Measures the largest angular distance from the supplied center to any point
+    //! in a geometry, including polygon holes and multipolygon children.
     double max_angular_radius_degrees(const Geometry& geometry, const glm::dvec3& center)
     {
         double max_radius = 0.0;
@@ -338,6 +357,8 @@ namespace
         return max_radius;
     }
 
+    //! Unwraps all longitudes into a continuous range around center_lon to make
+    //! planar bounds and splitting meaningful near the antimeridian.
     void unwrap_geometry_longitudes(Geometry& geometry, double center_lon)
     {
         geometry.eachPart([&](Geometry& part)
@@ -352,6 +373,7 @@ namespace
             });
     }
 
+    //! Computes bounds across all populated simple parts of a geometry.
     Box get_geometry_bounds(const Geometry& geometry)
     {
         Box bounds;
@@ -364,6 +386,7 @@ namespace
         return bounds;
     }
 
+    //! Linearly interpolates a segment to the point where it crosses a chosen axis.
     glm::dvec3 interpolate_to_axis(const glm::dvec3& a, const glm::dvec3& b, int axis, double value)
     {
         double av = axis == 0 ? a.x : a.y;
@@ -372,6 +395,7 @@ namespace
         return a + (b - a) * t;
     }
 
+    //! Clips one ring to an axis-aligned half-plane using Sutherland-Hodgman clipping.
     std::vector<glm::dvec3> clip_ring_to_halfplane(
         const std::vector<glm::dvec3>& input, int axis, double value, bool keep_less)
     {
@@ -410,6 +434,8 @@ namespace
         return output;
     }
 
+    //! Clips one polygon to an axis-aligned half-plane. The output preserves the
+    //! Geometry contract: points is the outer ring and parts contains simple holes.
     Geometry clip_polygon_to_halfplane(const Geometry& polygon, int axis, double value, bool keep_less)
     {
         Geometry output(Geometry::Type::Polygon);
@@ -430,6 +456,8 @@ namespace
         return output;
     }
 
+    //! Clips a polygon or multipolygon to an axis-aligned half-plane while preserving
+    //! simple vs. multi geometry layout.
     Geometry clip_geometry_to_halfplane(const Geometry& geometry, int axis, double value, bool keep_less)
     {
         if (geometry.type == Geometry::Type::Polygon)
@@ -454,6 +482,8 @@ namespace
         return Geometry(geometry.type);
     }
 
+    //! Normalizes all longitude values in a geometry after processing in an
+    //! unwrapped longitude frame.
     void normalize_geometry_longitudes(Geometry& geometry)
     {
         geometry.eachPart([&](Geometry& part)
@@ -463,6 +493,8 @@ namespace
             });
     }
 
+    //! Converts line features into renderable ECS line coordinates, including
+    //! tessellation, antimeridian splitting when needed, clamping, projection, and localization.
     void compile_feature_to_lines(const Feature& feature, const LineStyle& style, const GeoPoint& origin,
         ElevationSession& clamper, const SRS& output_srs, LineGeometry& lineGeom)
     {
@@ -538,6 +570,8 @@ namespace
         max_span = final_max_span;
     }
 
+    //! Tessellates one polygon feature in a local gnomonic frame with weemesh and
+    //! emits the resulting triangles into MeshGeometry in the requested output SRS.
     void compile_polygon_feature_with_weemesh(const Feature& feature, const MeshStyle& style,
         const GeoPoint& origin, ElevationSession& clamper, const SRS& output_srs, MeshGeometry& meshGeom)
     {
@@ -781,6 +815,8 @@ namespace
         }
     }
 
+    //! Converts a polygon or multipolygon feature into mesh geometry, recursively
+    //! splitting very large geodetic polygons before the local weemesh tessellation step.
     void compile_polygon_feature(const Feature& feature, const MeshStyle& style,
         const GeoPoint& origin, ElevationSession& clamper, const SRS& output_srs,
         MeshGeometry& meshGeom, unsigned depth = 0)
@@ -852,6 +888,8 @@ namespace
 }
 
 #if 0
+//! Legacy entity-building path that compiled features and wrote ECS components
+//! directly into a registry. Currently disabled in favor of explicit geometry builders.
 entt::entity
 FeatureBuilder::generate(const SRS& output_srs, Registry& registry)
 {
@@ -930,6 +968,8 @@ FeatureBuilder::generate(const SRS& output_srs, Registry& registry)
 }
 #endif
 
+//! Builds an ECS LineGeometry object from all line and multiline features using
+//! the builder's output SRS, origin, optional color function, and elevation clamper.
 void
 FeatureBuilder::buildLineGeometry(const std::vector<Feature>& features, const LineStyle& style,
     LineGeometry& lineGeom)
@@ -959,6 +999,8 @@ FeatureBuilder::buildLineGeometry(const std::vector<Feature>& features, const Li
     }
 }
 
+//! Builds an ECS MeshGeometry object from all polygon and multipolygon features
+//! using the builder's output SRS, origin, optional color function, and elevation clamper.
 void
 FeatureBuilder::buildMeshGeometry(const std::vector<Feature>& features, const MeshStyle& style,
     MeshGeometry& meshGeom)

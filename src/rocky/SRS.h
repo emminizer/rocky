@@ -218,7 +218,6 @@ namespace ROCKY_NAMESPACE
         static std::function<void(int level, const char* msg)> projMessageCallback;
 
     private:
-        //! Create an SRS from an initialization string.
         std::string _definition;
         mutable std::optional<bool> _valid;
         mutable std::optional<int> _crs_type;
