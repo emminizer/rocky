@@ -10,9 +10,10 @@ using namespace ROCKY_NAMESPACE;
 
 auto Demo_FeatureBuilder = [](Application& app)
     {
-        static entt::entity entity = entt::null;
+        static entt::entity graticule;
+        static std::vector<entt::entity> tests;
 
-        if (entity == entt::null)
+        if (tests.empty())
         {
             auto&& [_, reg] = app.registry.write();
 
@@ -49,26 +50,25 @@ auto Demo_FeatureBuilder = [](Application& app)
                 };
             }
 
-            entity = reg.create();
+            graticule = reg.create();
 
             // A Geometry to hold the results. We have to use the "Segments"
             // topology since the data is not one continuous strip.
-            auto& lineGeom = reg.emplace<LineGeometry>(entity);
+            auto& lineGeom = reg.emplace<LineGeometry>(graticule);
             lineGeom.topology = LineTopology::Segments;
 
             // And a style:
-            auto& lineStyle = reg.emplace<LineStyle>(entity);
+            auto& lineStyle = reg.emplace<LineStyle>(graticule);
             lineStyle.color = StockColor::Gray;
             lineStyle.depthOffset = 50000;
             lineStyle.resolution = 150000.0; // max segment length in meters (for tessellation)
 
             FeatureBuilder builder;
 
-            builder.buildLineGeometry({ meridians, parallels }, lineStyle, app.mapNode->srs(), lineGeom);
+            builder.buildLineGeometry({ meridians, parallels }, lineStyle, lineGeom);
 
             // The Line ties it all together:
-            reg.emplace<Line>(entity, lineGeom, lineStyle);
-
+            reg.emplace<Line>(graticule, lineGeom, lineStyle);
 
             // Test: polygon feature that crosses the antimeridian.
             // See: a cyan rectangle spanning the 180th meridian from 10S to 10N
@@ -88,10 +88,10 @@ auto Demo_FeatureBuilder = [](Application& app)
                 meshStyle.depthOffset = 50000;
                 FeatureBuilder builder;
                 auto& meshGeom = reg.emplace<MeshGeometry>(e);
-                builder.buildMeshGeometry({ poly }, meshStyle, app.mapNode->srs(), meshGeom);
+                builder.buildMeshGeometry({ poly }, meshStyle, meshGeom);
                 reg.emplace<Mesh>(e, meshGeom, meshStyle);
+                tests.emplace_back(e);
             }
-
 
             // Test: line feature that crosses the antimeridian
             // See: a purple line spanning the 180th meridian at 25S, using rhumb line interpolation
@@ -111,10 +111,11 @@ auto Demo_FeatureBuilder = [](Application& app)
                 lineStyle.width = 5.0f;
                 FeatureBuilder builder;
                 auto& lineGeom = reg.emplace<LineGeometry>(e);
-                builder.buildLineGeometry({ line }, lineStyle, app.mapNode->srs(), lineGeom);
+                //builder.buildLineGeometry({ line }, lineStyle, app.mapNode->srs(), lineGeom);
+                builder.buildLineGeometry({ line }, lineStyle, lineGeom);
                 reg.emplace<Line>(e, lineGeom, lineStyle);
+                tests.emplace_back(e);
             }
-
 
             // Test: polar polygon in stereographic coordinates
             // See: a rectangle centered on the north pole
@@ -134,8 +135,9 @@ auto Demo_FeatureBuilder = [](Application& app)
                 meshStyle.depthOffset = 50000;
                 FeatureBuilder builder;
                 auto& meshGeom = reg.emplace<MeshGeometry>(e);
-                builder.buildMeshGeometry({ poly }, meshStyle, app.mapNode->srs(), meshGeom);
+                builder.buildMeshGeometry({ poly }, meshStyle, meshGeom);
                 reg.emplace<Mesh>(e, meshGeom, meshStyle);
+                tests.emplace_back(e);
             }
 
 
@@ -157,8 +159,9 @@ auto Demo_FeatureBuilder = [](Application& app)
                 lineStyle.width = 5.0f;
                 FeatureBuilder builder;
                 auto& lineGeom = reg.emplace<LineGeometry>(e);
-                builder.buildLineGeometry({ line }, lineStyle, app.mapNode->srs(), lineGeom);
+                builder.buildLineGeometry({ line }, lineStyle, lineGeom);
                 reg.emplace<Line>(e, lineGeom, lineStyle);
+                tests.emplace_back(e);
             }
 
 
@@ -166,6 +169,7 @@ auto Demo_FeatureBuilder = [](Application& app)
             {
                 Feature poly;
                 poly.geometry.type = Geometry::Type::Polygon;
+                poly.interpolation = GeodeticInterpolation::RhumbLine;
                 poly.srs = SRS::WGS84;
                 poly.geometry.points = {
                     { -80.0, -25.0, 0.0 },
@@ -179,12 +183,38 @@ auto Demo_FeatureBuilder = [](Application& app)
                 meshStyle.depthOffset = 50000;
                 FeatureBuilder builder;
                 auto& meshGeom = reg.emplace<MeshGeometry>(e);
-                builder.buildMeshGeometry({ poly }, meshStyle, app.mapNode->srs(), meshGeom);
+                builder.buildMeshGeometry({ poly }, meshStyle, meshGeom);
                 reg.emplace<Mesh>(e, meshGeom, meshStyle);
+                tests.emplace_back(e);
             }
 
             app.vsgcontext->requestFrame();
         }
 
         ImGui::TextWrapped("%s", "FeatureBuilder is a helper utility for turning GIS feature data into geometry (lines and meshes).");
+
+        ImGuiLTable::Begin("FeatureBuilder");
+        static bool testsVisible = true;
+        static bool graticuleVisible = true;
+
+        if (ImGuiLTable::Checkbox("Show graticule", &graticuleVisible))
+        {
+            app.registry.write([&](entt::registry& reg)
+                {
+                    reg.get<Visibility>(graticule).visible.fill(graticuleVisible);
+                });
+        }
+
+        if (ImGuiLTable::Checkbox("Show test features", &testsVisible))
+        {
+            app.registry.write([&](entt::registry& reg)
+                {
+                    for (auto e : tests)
+                    {
+                        reg.get<Visibility>(e).visible.fill(testsVisible);
+                    }
+                });
+        }
+        ImGuiLTable::End();
+        
     };

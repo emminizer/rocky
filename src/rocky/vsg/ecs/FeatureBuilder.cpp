@@ -177,6 +177,100 @@ namespace
         return output;
     }
 
+    std::vector<std::vector<glm::dvec3>> split_linestring_at_antimeridian(const std::vector<glm::dvec3>& input)
+    {
+        std::vector<std::vector<glm::dvec3>> output;
+
+        if (input.empty())
+            return output;
+
+        output.emplace_back();
+        output.back().emplace_back(input.front());
+
+        for (std::size_t i = 1; i < input.size(); ++i)
+        {
+            const auto& a = input[i - 1];
+            const auto& b = input[i];
+            double delta = b.x - a.x;
+
+            if (fabs(delta) > 180.0)
+            {
+                glm::dvec3 b_unwrapped = b;
+                double first_edge_lon;
+                double second_edge_lon;
+
+                if (delta < -180.0)
+                {
+                    b_unwrapped.x += 360.0;
+                    first_edge_lon = 180.0;
+                    second_edge_lon = -180.0;
+                }
+                else
+                {
+                    b_unwrapped.x -= 360.0;
+                    first_edge_lon = -180.0;
+                    second_edge_lon = 180.0;
+                }
+
+                double denom = b_unwrapped.x - a.x;
+                double t = fabs(denom) > 1e-12 ? (first_edge_lon - a.x) / denom : 0.0;
+                t = std::max(0.0, std::min(1.0, t));
+
+                glm::dvec3 first_edge = a + (b_unwrapped - a) * t;
+                first_edge.x = first_edge_lon;
+
+                glm::dvec3 second_edge = first_edge;
+                second_edge.x = second_edge_lon;
+
+                output.back().emplace_back(first_edge);
+                output.emplace_back();
+                output.back().emplace_back(second_edge);
+            }
+
+            output.back().emplace_back(b);
+        }
+
+        return output;
+    }
+
+    std::vector<glm::dvec3> tessellate_polygon_ring(
+        const std::vector<glm::dvec3>& input,
+        const SRS& input_srs,
+        GeodeticInterpolation interp,
+        float max_span)
+    {
+        std::vector<glm::dvec3> output;
+
+        if (input.size() < 2)
+            return input;
+
+        bool closed = input.front() == input.back();
+        std::size_t ring_size = closed ? input.size() - 1 : input.size();
+
+        if (ring_size < 2)
+            return input;
+
+        for (std::size_t i = 0; i < ring_size; ++i)
+        {
+            std::size_t j = i == ring_size - 1 ? 0 : i + 1;
+            tessellate_line_segment(input[i], input[j], input_srs, interp, max_span, output, false);
+        }
+
+        return output;
+    }
+
+    void tessellate_polygon_edges(Geometry& geometry, const SRS& input_srs, GeodeticInterpolation interp, float max_span)
+    {
+        if (!input_srs.isGeodetic() && !input_srs.isGeocentric())
+            return;
+
+        geometry.eachPart([&](Geometry& part)
+            {
+                if (part.points.size() >= 2)
+                    part.points = tessellate_polygon_ring(part.points, input_srs, interp, max_span);
+            });
+    }
+
     float get_max_segment_length(const std::vector<glm::dvec3>& input)
     {
         float m = 0.0f;
@@ -185,6 +279,188 @@ namespace
             m = std::max(m, (float)glm::length(input[i] - input[i + 1]));
         }
         return m;
+    }
+
+    double angular_distance_degrees(const glm::dvec3& a, const glm::dvec3& b)
+    {
+        double lon1 = glm::radians(a.x);
+        double lat1 = glm::radians(a.y);
+        double lon2 = glm::radians(b.x);
+        double lat2 = glm::radians(b.y);
+        double dlon = lon2 - lon1;
+        double dlat = lat2 - lat1;
+        double sin_dlat = sin(dlat * 0.5);
+        double sin_dlon = sin(dlon * 0.5);
+        double h = sin_dlat * sin_dlat + cos(lat1) * cos(lat2) * sin_dlon * sin_dlon;
+        return glm::degrees(2.0 * asin(std::min(1.0, sqrt(h))));
+    }
+
+    bool get_geometry_geodetic_center(const Geometry& geometry, glm::dvec3& out_center)
+    {
+        double lon_sin_sum = 0.0;
+        double lon_cos_sum = 0.0;
+        double lat_sum = 0.0;
+        std::size_t point_count = 0;
+
+        geometry.eachPart([&](const Geometry& part)
+            {
+                for (const auto& p : part.points)
+                {
+                    double lon = glm::radians(p.x);
+                    lon_sin_sum += sin(lon);
+                    lon_cos_sum += cos(lon);
+                    lat_sum += p.y;
+                    ++point_count;
+                }
+            });
+
+        if (point_count == 0)
+            return false;
+
+        out_center.x = glm::degrees(atan2(lon_sin_sum, lon_cos_sum));
+        out_center.y = lat_sum / (double)point_count;
+        out_center.z = 0.0;
+        return true;
+    }
+
+    double max_angular_radius_degrees(const Geometry& geometry, const glm::dvec3& center)
+    {
+        double max_radius = 0.0;
+
+        geometry.eachPart([&](const Geometry& part)
+            {
+                for (const auto& p : part.points)
+                {
+                    max_radius = std::max(max_radius, angular_distance_degrees(center, p));
+                }
+            });
+
+        return max_radius;
+    }
+
+    void unwrap_geometry_longitudes(Geometry& geometry, double center_lon)
+    {
+        geometry.eachPart([&](Geometry& part)
+            {
+                for (auto& p : part.points)
+                {
+                    while (p.x - center_lon > 180.0)
+                        p.x -= 360.0;
+                    while (p.x - center_lon < -180.0)
+                        p.x += 360.0;
+                }
+            });
+    }
+
+    Box get_geometry_bounds(const Geometry& geometry)
+    {
+        Box bounds;
+
+        geometry.eachPart([&](const Geometry& part)
+            {
+                bounds.expandBy(part.points.begin(), part.points.end());
+            });
+
+        return bounds;
+    }
+
+    glm::dvec3 interpolate_to_axis(const glm::dvec3& a, const glm::dvec3& b, int axis, double value)
+    {
+        double av = axis == 0 ? a.x : a.y;
+        double bv = axis == 0 ? b.x : b.y;
+        double t = (value - av) / (bv - av);
+        return a + (b - a) * t;
+    }
+
+    std::vector<glm::dvec3> clip_ring_to_halfplane(
+        const std::vector<glm::dvec3>& input, int axis, double value, bool keep_less)
+    {
+        std::vector<glm::dvec3> output;
+
+        if (input.empty())
+            return output;
+
+        auto inside = [&](const glm::dvec3& p)
+            {
+                double v = axis == 0 ? p.x : p.y;
+                return keep_less ? v <= value : v >= value;
+            };
+
+        auto previous = input.back();
+        bool previous_inside = inside(previous);
+
+        for (const auto& current : input)
+        {
+            bool current_inside = inside(current);
+
+            if (current_inside != previous_inside)
+            {
+                output.emplace_back(interpolate_to_axis(previous, current, axis, value));
+            }
+
+            if (current_inside)
+            {
+                output.emplace_back(current);
+            }
+
+            previous = current;
+            previous_inside = current_inside;
+        }
+
+        return output;
+    }
+
+    Geometry clip_polygon_to_halfplane(const Geometry& polygon, int axis, double value, bool keep_less)
+    {
+        Geometry output(Geometry::Type::Polygon);
+        output.points = clip_ring_to_halfplane(polygon.points, axis, value, keep_less);
+
+        if (output.points.size() < 3)
+            return Geometry(Geometry::Type::Polygon);
+
+        for (const auto& hole : polygon.parts)
+        {
+            auto clipped_hole = hole;
+            clipped_hole.points = clip_ring_to_halfplane(hole.points, axis, value, keep_less);
+            clipped_hole.parts.clear();
+            if (clipped_hole.points.size() >= 3)
+                output.parts.emplace_back(std::move(clipped_hole));
+        }
+
+        return output;
+    }
+
+    Geometry clip_geometry_to_halfplane(const Geometry& geometry, int axis, double value, bool keep_less)
+    {
+        if (geometry.type == Geometry::Type::Polygon)
+        {
+            return clip_polygon_to_halfplane(geometry, axis, value, keep_less);
+        }
+
+        if (geometry.type == Geometry::Type::MultiPolygon)
+        {
+            Geometry output(Geometry::Type::MultiPolygon);
+
+            Geometry::const_iterator(geometry, false).eachPart([&](const Geometry& part)
+                {
+                    auto clipped_part = clip_polygon_to_halfplane(part, axis, value, keep_less);
+                    if (clipped_part.points.size() >= 3)
+                        output.parts.emplace_back(std::move(clipped_part));
+                });
+
+            return output;
+        }
+
+        return Geometry(geometry.type);
+    }
+
+    void normalize_geometry_longitudes(Geometry& geometry)
+    {
+        geometry.eachPart([&](Geometry& part)
+            {
+                for (auto& p : part.points)
+                    p.x = normalize_longitude(p.x);
+            });
     }
 
     void compile_feature_to_lines(const Feature& feature, const LineStyle& style, const GeoPoint& origin,
@@ -202,49 +478,60 @@ namespace
                 // tessellate:
                 auto tessellated = tessellate_linestring(part.points, feature.srs, feature.interpolation, max_span);
 
-                // clamp:
-                if (clamper)
-                {
-                    clamper.clampRange(tessellated.begin(), tessellated.end());
-                }
+                auto line_parts = feature.srs.isGeodetic() && !output_srs.isGeocentric() ?
+                    split_linestring_at_antimeridian(tessellated) :
+                    std::vector<std::vector<glm::dvec3>>{ std::move(tessellated) };
 
-                // transform:
-                auto feature_to_world = feature.srs.to(output_srs);
-                feature_to_world.transformArray(tessellated.data(), tessellated.size());
-
-                // localize:
-                if (origin.valid())
+                for (auto& line_part : line_parts)
                 {
-                    auto ref_out = origin.transform(output_srs);
-                    for (auto& p : tessellated)
+                    if (line_part.size() < 2)
+                        continue;
+
+                    // clamp:
+                    if (clamper)
                     {
-                        p -= glm::dvec3(ref_out.x, ref_out.y, ref_out.z);
+                        clamper.clampRange(line_part.begin(), line_part.end());
                     }
-                }
 
-                // Populate the line component based on the topology.
-                if (lineGeom.topology == LineTopology::Strip)
-                {
-                    // CHECK THIS
-                    lineGeom.points.reserve(lineGeom.points.size() + tessellated.size());
-                    lineGeom.points.insert(lineGeom.points.end(), tessellated.begin(), tessellated.end());
-                }
+                    auto feature_to_world = feature.srs.to(output_srs);
 
-                else // Line::Topology::Segments
-                {
-                    std::size_t num_points_in_segments = tessellated.size() * 2 - 2;
-                    auto ptr = lineGeom.points.size();
-                    lineGeom.points.reserve(lineGeom.points.size() + num_points_in_segments);
+                    // transform:
+                    feature_to_world.transformArray(line_part.data(), line_part.size());
 
-                    // convert from a strip to segments
-                    for (std::size_t i = 0; i < tessellated.size() - 1; ++i)
+                    // localize:
+                    if (origin.valid())
                     {
-                        lineGeom.points.emplace_back(tessellated[i]);
-                        lineGeom.points.emplace_back(tessellated[i + 1]);
+                        auto ref_out = origin.transform(output_srs);
+                        for (auto& p : line_part)
+                        {
+                            p -= glm::dvec3(ref_out.x, ref_out.y, ref_out.z);
+                        }
                     }
-                }
 
-                final_max_span = std::max(final_max_span, get_max_segment_length(tessellated));
+                    // Populate the line component based on the topology.
+                    if (lineGeom.topology == LineTopology::Strip)
+                    {
+                        // CHECK THIS
+                        lineGeom.points.reserve(lineGeom.points.size() + line_part.size());
+                        lineGeom.points.insert(lineGeom.points.end(), line_part.begin(), line_part.end());
+                    }
+
+                    else // Line::Topology::Segments
+                    {
+                        std::size_t num_points_in_segments = line_part.size() * 2 - 2;
+                        auto ptr = lineGeom.points.size();
+                        lineGeom.points.reserve(lineGeom.points.size() + num_points_in_segments);
+
+                        // convert from a strip to segments
+                        for (std::size_t i = 0; i < line_part.size() - 1; ++i)
+                        {
+                            lineGeom.points.emplace_back(line_part[i]);
+                            lineGeom.points.emplace_back(line_part[i + 1]);
+                        }
+                    }
+
+                    final_max_span = std::max(final_max_span, get_max_segment_length(line_part));
+                }
             });
 
         // max length:
@@ -350,6 +637,22 @@ namespace
         int cols = std::max(2, (int)(local_ex.width() / xspan));
         int rows = std::max(2, (int)(local_ex.height() / yspan));
 
+        // weemesh uses 16-bit-ish vertex indexing internally, so keep the seed grid
+        // comfortably below its allocation ceiling.
+        constexpr int max_grid_vertices = 60000;
+        while ((long long)cols * (long long)rows > max_grid_vertices)
+        {
+            if (cols >= rows && cols > 2)
+                cols = (cols + 1) / 2;
+            else if (rows > 2)
+                rows = (rows + 1) / 2;
+            else
+                break;
+        }
+
+        std::vector<int> grid_indices;
+        grid_indices.reserve((std::size_t)cols * (std::size_t)rows);
+
         for (int row = 0; row < rows; ++row)
         {
             double v = (double)row / (double)(rows - 1);
@@ -360,7 +663,7 @@ namespace
                 double u = (double)col / (double)(cols - 1);
                 double x = local_ex.xmin + u * local_ex.width();
 
-                m.get_or_create_vertex_from_vec3(glm::dvec3{ x, y, 0.0 }, marker);
+                grid_indices.emplace_back(m.get_or_create_vertex_from_vec3(glm::dvec3{ x, y, 0.0 }, marker));
             }
         }
 
@@ -369,8 +672,16 @@ namespace
             for (int col = 0; col < cols - 1; ++col)
             {
                 int k = row * cols + col;
-                m.add_triangle(k, k + 1, k + cols);
-                m.add_triangle(k + 1, k + cols + 1, k + cols);
+                int i00 = grid_indices[k];
+                int i10 = grid_indices[k + 1];
+                int i01 = grid_indices[k + cols];
+                int i11 = grid_indices[k + cols + 1];
+
+                if (i00 >= 0 && i10 >= 0 && i01 >= 0)
+                    m.add_triangle(i00, i10, i01);
+
+                if (i10 >= 0 && i11 >= 0 && i01 >= 0)
+                    m.add_triangle(i10, i11, i01);
             }
         }
 
@@ -469,6 +780,75 @@ namespace
             meshGeom.indices.emplace_back((std::uint32_t)meshGeom.vertices.size() - 1);
         }
     }
+
+    void compile_polygon_feature(const Feature& feature, const MeshStyle& style,
+        const GeoPoint& origin, ElevationSession& clamper, const SRS& output_srs,
+        MeshGeometry& meshGeom, unsigned depth = 0)
+    {
+        constexpr double max_angular_radius = 75.0;
+        constexpr unsigned max_split_depth = 8;
+        constexpr float boundary_max_span = 100000.0f;
+
+        Feature geodetic_feature = feature;
+        bool source_is_geodetic = geodetic_feature.srs.isGeodetic();
+        if (!geodetic_feature.srs.isGeodetic())
+        {
+            geodetic_feature.transformInPlace(geodetic_feature.srs.geodeticSRS());
+        }
+
+        tessellate_polygon_edges(
+            geodetic_feature.geometry,
+            geodetic_feature.srs,
+            geodetic_feature.interpolation,
+            boundary_max_span);
+
+        glm::dvec3 center;
+        if (!get_geometry_geodetic_center(geodetic_feature.geometry, center))
+            return;
+
+        unwrap_geometry_longitudes(geodetic_feature.geometry, center.x);
+
+        double angular_radius = max_angular_radius_degrees(geodetic_feature.geometry, center);
+
+        if (depth == 0 && !source_is_geodetic && angular_radius <= max_angular_radius)
+        {
+            compile_polygon_feature_with_weemesh(feature, style, origin, clamper, output_srs, meshGeom);
+            return;
+        }
+
+        if (depth >= max_split_depth || angular_radius <= max_angular_radius)
+        {
+            normalize_geometry_longitudes(geodetic_feature.geometry);
+            geodetic_feature.dirtyExtent();
+            compile_polygon_feature_with_weemesh(geodetic_feature, style, origin, clamper, output_srs, meshGeom);
+            return;
+        }
+
+        Box bounds = get_geometry_bounds(geodetic_feature.geometry);
+        if (!bounds.valid())
+            return;
+
+        int axis = bounds.width() >= bounds.height() ? 0 : 1;
+        double split_value = axis == 0 ? bounds.center().x : bounds.center().y;
+
+        Feature a = geodetic_feature;
+        a.geometry = clip_geometry_to_halfplane(geodetic_feature.geometry, axis, split_value, true);
+
+        Feature b = geodetic_feature;
+        b.geometry = clip_geometry_to_halfplane(geodetic_feature.geometry, axis, split_value, false);
+
+        if (get_geometry_bounds(a.geometry).valid())
+        {
+            a.dirtyExtent();
+            compile_polygon_feature(a, style, origin, clamper, output_srs, meshGeom, depth + 1);
+        }
+
+        if (get_geometry_bounds(b.geometry).valid())
+        {
+            b.dirtyExtent();
+            compile_polygon_feature(b, style, origin, clamper, output_srs, meshGeom, depth + 1);
+        }
+    }
 }
 
 #if 0
@@ -505,11 +885,11 @@ FeatureBuilder::generate(const SRS& output_srs, Registry& registry)
             if (styles.meshColorFunction)
             {                
                 tempMeshStyle.color = styles.meshColorFunction(feature);
-                compile_polygon_feature_with_weemesh(feature, tempMeshStyle, origin, clamper, output_srs, ws.meshGeom);
+                compile_polygon_feature(feature, tempMeshStyle, origin, clamper, output_srs, ws.meshGeom);
             }
             else
             {
-                compile_polygon_feature_with_weemesh(feature, styles.meshStyle, origin, clamper, output_srs, ws.meshGeom);
+                compile_polygon_feature(feature, styles.meshStyle, origin, clamper, output_srs, ws.meshGeom);
             }
         }
 
@@ -552,10 +932,10 @@ FeatureBuilder::generate(const SRS& output_srs, Registry& registry)
 
 void
 FeatureBuilder::buildLineGeometry(const std::vector<Feature>& features, const LineStyle& style,
-    const SRS& output_srs, LineGeometry& lineGeom)
+    LineGeometry& lineGeom)
 {
     lineGeom.topology = LineTopology::Segments;
-    lineGeom.srs = output_srs;
+    lineGeom.srs = outputSRS;
 
     if (colorFunction)
     {
@@ -563,21 +943,27 @@ FeatureBuilder::buildLineGeometry(const std::vector<Feature>& features, const Li
         for (auto& feature : features)
         {
             tempStyle.color = colorFunction(feature);
-            compile_feature_to_lines(feature, tempStyle, origin, clamper, output_srs, lineGeom);
+            if (clamper.srs)
+                clamper.srs = feature.srs;
+            compile_feature_to_lines(feature, tempStyle, origin, clamper, outputSRS, lineGeom);
         }
     }
     else
     {
         for (auto& feature : features)
-            compile_feature_to_lines(feature, style, origin, clamper, output_srs, lineGeom);
+        {
+            if (clamper.srs)
+                clamper.srs = feature.srs;
+            compile_feature_to_lines(feature, style, origin, clamper, outputSRS, lineGeom);
+        }
     }
 }
 
 void
 FeatureBuilder::buildMeshGeometry(const std::vector<Feature>& features, const MeshStyle& style,
-    const SRS& output_srs, MeshGeometry& meshGeom)
+    MeshGeometry& meshGeom)
 {
-    meshGeom.srs = output_srs;
+    meshGeom.srs = outputSRS;
 
     if (colorFunction)
     {
@@ -585,12 +971,18 @@ FeatureBuilder::buildMeshGeometry(const std::vector<Feature>& features, const Me
         for (auto& feature : features)
         {
             tempStyle.color = colorFunction(feature);
-            compile_polygon_feature_with_weemesh(feature, tempStyle, origin, clamper, output_srs, meshGeom);
+            if (clamper.srs)
+                clamper.srs = feature.srs;
+            compile_polygon_feature(feature, tempStyle, origin, clamper, outputSRS, meshGeom);
         }
     }
     else
     {
         for (auto& feature : features)
-            compile_polygon_feature_with_weemesh(feature, style, origin, clamper, output_srs, meshGeom);
+        {
+            if (clamper.srs)
+                clamper.srs = feature.srs;
+            compile_polygon_feature(feature, style, origin, clamper, outputSRS, meshGeom);
+        }
     }
 }

@@ -137,7 +137,7 @@ auto Demo_Geocoder = [](Application& app)
                                     workingStyle.depthOffset = 9000.0f; // meters
 
                                     LineGeometry workingGeom;
-                                    builder.buildLineGeometry({ myfeature }, workingStyle, app.mapNode->srs(), workingGeom);
+                                    builder.buildLineGeometry({ myfeature }, workingStyle, workingGeom);
 
                                     app.registry.write([&](entt::registry& r)
                                         {

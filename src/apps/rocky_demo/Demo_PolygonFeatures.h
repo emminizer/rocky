@@ -73,7 +73,7 @@ auto Demo_PolygonFeatures = [](Application& app)
                     return Color{ frand(re), frand(re), frand(re), 1.0f };
                 };
 
-            builder.buildMeshGeometry(features, style, app.mapNode->srs(), workingGeom);
+            builder.buildMeshGeometry(features, style, workingGeom);
 
             // create an entity and components to house the objects:
             app.registry.write([&](entt::registry& reg)

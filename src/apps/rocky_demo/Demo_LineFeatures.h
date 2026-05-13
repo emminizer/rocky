@@ -62,7 +62,7 @@ auto Demo_LineFeatures = [](Application& app)
 
             // create our builder and populate the geometry:
             FeatureBuilder builder;
-            builder.buildLineGeometry(features, style, app.mapNode->srs(), workingGeom);
+            builder.buildLineGeometry(features, style, workingGeom);
 
             // create an entity and components to house the objects:
             app.registry.write([&](entt::registry& reg)

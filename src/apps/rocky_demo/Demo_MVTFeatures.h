@@ -112,9 +112,6 @@ auto Demo_MVTFeatures = [](Application& app)
                 // Feature building utility
                 FeatureBuilder builder;
 
-                // origin to localize our geometry, so it doesn't jitter
-                builder.origin = key.extent().centroid();
-
                 // to clamp features to the terrain
                 builder.clamper = elevationSampler.session(io);
                 builder.clamper.level = key.level;
@@ -124,25 +121,17 @@ auto Demo_MVTFeatures = [](Application& app)
                     if (!entityNode)
                         entityNode = EntityNode::create(app.registry); 
 
-                    // generate the geometry "offline" to prevent locking.
+                    // copy the style so we don't need a write lock during build:
                     MeshStyle style = app.registry.read().registry.get<MeshStyle>(styleEntity);
                     MeshGeometry geomTemp;
-
-                    builder.clamper.srs = buildings.front().srs;
-
-                    builder.buildMeshGeometry(buildings, style, app.mapNode->srs(), geomTemp);
+                    builder.buildMeshGeometry(buildings, style, geomTemp);
 
                     app.registry.write([&](entt::registry& reg)
                         {
-                            auto& style = reg.get<MeshStyle>(styleEntity);
-
                             auto entity = reg.create();
                             auto& geom = reg.emplace<MeshGeometry>(entity, geomTemp);
+                            auto& style = reg.get<MeshStyle>(styleEntity);
                             reg.emplace<Mesh>(entity, geom, style);
-
-                            auto& xform = reg.emplace<Transform>(entity);
-                            xform.position = builder.origin;
-                            xform.frustumCulled = false; // NodePager will take care of frustum culling for us
 
                             entityNode->entities.emplace_back(entity);
                         });
@@ -153,24 +142,17 @@ auto Demo_MVTFeatures = [](Application& app)
                     if (!entityNode)
                         entityNode = EntityNode::create(app.registry);
 
+                    // copy the style so we don't need a write lock during build:
                     LineStyle style = app.registry.read().registry.get<LineStyle>(styleEntity);
                     LineGeometry geomTemp;
-
-                    builder.clamper.srs = roads.front().srs;
-
-                    builder.buildLineGeometry(roads, style, app.mapNode->srs(), geomTemp);
+                    builder.buildLineGeometry(roads, style, geomTemp);
 
                     app.registry.write([&](entt::registry& reg)
                         {
-                            auto& style = reg.get<LineStyle>(styleEntity);
-
                             auto entity = reg.create();
                             auto& geom = reg.emplace<LineGeometry>(entity, geomTemp);
+                            auto& style = reg.get<LineStyle>(styleEntity);
                             reg.emplace<Line>(entity, geom, style);
-
-                            auto& xform = reg.emplace<Transform>(entity);
-                            xform.position = builder.origin;
-                            xform.frustumCulled = false; // NodePager will take care of frustum culling for us
 
                             entityNode->entities.emplace_back(entity);
                         });

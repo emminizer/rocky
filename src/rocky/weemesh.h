@@ -1,12 +1,16 @@
 #pragma once
 #include "rtree.h"
 #include <cmath>
+#include <cfloat>
 #include <climits>
+#include <cstdint>
+#include <limits>
 #include <map>
 #include <unordered_map>
 #include <iterator>
 #include <set>
 #include <unordered_set>
+#include <vector>
 
 #define marker_is_set(INDEX, BITS) ((markers[INDEX] & BITS) != 0)
 #define marker_not_set(INDEX, BITS) ((markers[INDEX] & BITS) == 0)
@@ -16,7 +20,7 @@ namespace weemesh
 {
     // MESHING SDK
 
-    using UID = std::uint32_t;
+    using UID = std::int32_t;
 
     constexpr double DEFAULT_EPSILON = 0.00015;
 
@@ -84,6 +88,8 @@ namespace weemesh
         }
         vert_t normalize2d() const {
             double len = length2d();
+            if (equivalent(len, 0.0, DEFAULT_EPSILON))
+                return vert_t(0.0, 0.0, z);
             return vert_t(x / len, y / len, z);
         }
         void set(value_type a, value_type b, value_type c) {
@@ -315,6 +321,12 @@ namespace weemesh
             if (i0 == i1 || i1 == i2 || i2 == i0)
                 return -1;
 
+            if (i0 < 0 || i1 < 0 || i2 < 0 ||
+                i0 >= (int)verts.size() || i1 >= (int)verts.size() || i2 >= (int)verts.size())
+            {
+                return -1;
+            }
+
             UID uid(uidgen++);
             triangle_t tri;
             tri.uid = uid;
@@ -406,7 +418,10 @@ namespace weemesh
             vert_t::value_type a_min[2] = { xmin, ymin };
             vert_t::value_type a_max[2] = { xmax, ymax };
             _spatial_index.Search(a_min, a_max, [&](const UID& uid) {
-                output.emplace_back(&triangles[uid]); return true;  });
+                auto iter = triangles.find(uid);
+                if (iter != triangles.end())
+                    output.emplace_back(&iter->second);
+                return true;  });
             return (unsigned)output.size();
         }
 
@@ -435,7 +450,11 @@ namespace weemesh
 
             for (auto uid : uids)
             {
-                triangle_t& tri = triangles[uid];
+                auto tri_iter = triangles.find(uid);
+                if (tri_iter == triangles.end())
+                    continue;
+
+                triangle_t& tri = tri_iter->second;
 
                 if (tri.is_2d_degenerate)
                     continue;
@@ -479,7 +498,11 @@ namespace weemesh
             std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
             for (auto uid : uid_list)
             {
-                triangle_t& tri = triangles[uid];
+                auto tri_iter = triangles.find(uid);
+                if (tri_iter == triangles.end())
+                    continue;
+
+                triangle_t& tri = tri_iter->second;
 
                 // skip triangles that are "degenerate" in 2D. We will keep them
                 // because they may NOT be degenerate in 3D (e.g. steep slopes).
@@ -678,30 +701,33 @@ namespace weemesh
 
             if (!equivalent(bary[2], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i0, tri.i1, new_i);
-                if (new_uid >= 0 && uid_list) {
+                if (new_uid >= 0) {
                     markers[tri.i0] |= _constraint_marker;
                     markers[tri.i1] |= _constraint_marker;
-                    uid_list->push_back(new_uid);
+                    if (uid_list)
+                        uid_list->push_back(new_uid);
                     ++new_tris;
                 }
             }
 
             if (!equivalent(bary[0], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i1, tri.i2, new_i);
-                if (new_uid >= 0 && uid_list) {
+                if (new_uid >= 0) {
                     markers[tri.i1] |= _constraint_marker;
                     markers[tri.i2] |= _constraint_marker;
-                    uid_list->push_back(new_uid);
+                    if (uid_list)
+                        uid_list->push_back(new_uid);
                     ++new_tris;
                 }
             }
 
             if (!equivalent(bary[1], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i2, tri.i0, new_i);
-                if (new_uid >= 0 && uid_list) {
+                if (new_uid >= 0) {
                     markers[tri.i2] |= _constraint_marker;
                     markers[tri.i0] |= _constraint_marker;
-                    uid_list->push_back(new_uid);
+                    if (uid_list)
+                        uid_list->push_back(new_uid);
                     ++new_tris;
                 }
             }
@@ -735,7 +761,11 @@ namespace weemesh
             const vert_t& e2 = get_vertex(edge._i1);
             vert_t qp = e2 - e1;
             vert_t xp = p - e1;
-            double u = xp.dot2d(qp) / qp.dot2d(qp);
+            double denom = qp.dot2d(qp);
+            if (equivalent(denom, 0.0, epsilon))
+                return e1;
+
+            double u = xp.dot2d(qp) / denom;
             if (u < 0.0) return e1;
             else if (u > 1.0) return e2;
             else return e1 + qp * u;
@@ -827,7 +857,7 @@ namespace weemesh
     // (currently unused!)
     struct graph_t
     {
-        std::unordered_map<int, node_t> _nodes;
+        std::map<int, node_t> _nodes;
         int _num_subgraphs;
 
         graph_t(const mesh_t& mesh)
